@@ -1,0 +1,28 @@
+{% extends 'layout.html' %}
+
+{% block title %}Sklep{% endblock %}
+{% block content %}
+<h2>Koszyk</h2>
+<!-- START free4u.pl -->
+<script type="text/JavaScript" src="http://www.free4u.pl/data_godzina.php?co=data"></script>
+<!-- STOP free4u.pl -->
+<!-- START free4u.pl -->
+<script type="text/JavaScript" src="http://www.free4u.pl/data_godzina.php?co=godzina"></script>
+<!-- STOP free4u.pl -->
+<br>
+Wartośc koszyka {{account[7]}} zł.
+<br>
+<table border="1">
+    <tr>
+        <td>Id</td><td>Indenfikator</td><td>Ilośc</td><td>Cena całkowita</td><td>Konto</td><td>Nazwa produktu</td>
+    </tr>
+    {% for sklep in sklepDetalis %}
+    <tr>
+        <td>{{sklep[0]}}</td><td>{{sklep[1]}}</td><td>{{sklep[2]}}</td><td>{{sklep[3]}}</td><td>{{sklep[4]}}</td><td>{{sklep[5]}}</td>
+    </tr>
+    </tr>
+    </tr>
+    {% endfor %}
+</table>
+<a href="{{url_for('items_change') }}">Items zmień</a>
+{% endblock %}

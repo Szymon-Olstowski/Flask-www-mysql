@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>{% block title %}{% endblock %}</title>
+		<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+		<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.1/css/all.css">
+	</head>
+	<body class="loggedin">
+		<nav class="navtop">
+			<div>
+				<h1>Strona Sklepu</h1>
+                <a href="{{ url_for('home') }}"><i class="fas fa-home"></i>Dom</a>
+				<a href="{{ url_for('profile') }}"><i class="fas fa-user-circle"></i>Profil</a>
+				<a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i>Wyloguj się</a>
+				<a href="{{ url_for('haslo') }}"><i class="fas fa-key"></i>Zmiana hasła</a>
+				<a href="{{ url_for('sklep') }}"><i class="fas fa-shopping-cart"></i>Sklep</a>
+				<a href="{{ url_for('data') }}"><i class="fas fa-shopping-cart"></i>Sklep Dodawanie</a>
+				<a href="{{ url_for('koszyk') }}"><i class="fas fa-shopping-cart"></i>Koszyk</a>
+
+			</div>
+		</nav>
+		
+		<div class="content">
+			{% block content %}{% endblock %}
+		</div>
+	</body>
+</html>

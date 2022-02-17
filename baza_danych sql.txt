@@ -1,0 +1,32 @@
+CREATE DATABASE IF NOT EXISTS `pythonlogin` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+USE `pythonlogin`;
+CREATE TABLE IF NOT EXISTS `accounts` (
+	`id` int(11) NOT NULL AUTO_INCREMENT,
+  	`username` varchar(50) NOT NULL,
+  	`password` varchar(255) NOT NULL,
+  	`email` varchar(100) NOT NULL,
+	`konto_create` varchar(50) NOT NUll,
+	`login_as` varchar(50) NOT NUll,
+	`haslo_change` varchar(50) NOT NULL,
+	`money` int(11) NOT NULL,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;
+CREATE TABLE IF NOT EXISTS `sklep` (
+	`id` int(11) NOT NULL AUTO_INCREMENT,
+  	`nazwa_produktu` varchar(100) NOT NULL,
+  	`producent` varchar(100) NOT NULL,
+  	`kategoria` varchar(100) NOT NULL,
+	`typ` varchar(100) NOT NULL,
+	`cena` int(11) NOT NULL,
+	`indenfikator` varchar(100) NOT NUll,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;
+CREATE TABLE IF NOT EXISTS `items` (
+	`id` int(11) NOT NULL AUTO_INCREMENT,
+	`indenfikator` varchar(100) NOT NUll,
+  	`ilosc` int(11) NOT NULL,
+  	`cena` varchar(11) NOT NULL,
+	`konto` varchar(100) NOT NULL,
+	`nazwa_produktu` varchar(100) NOT NULL,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;

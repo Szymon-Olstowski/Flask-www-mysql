@@ -1,0 +1,17 @@
+{% extends 'layout.html' %}
+
+{% block title %}Sklep{% endblock %}
+{% block content %}
+<h2>Sklep items</h2>
+<!-- START free4u.pl -->
+<script type="text/JavaScript" src="http://www.free4u.pl/data_godzina.php?co=data"></script>
+<!-- STOP free4u.pl -->
+<!-- START free4u.pl -->
+<script type="text/JavaScript" src="http://www.free4u.pl/data_godzina.php?co=godzina"></script>
+<!-- STOP free4u.pl -->
+<form action="{{ url_for('items') }}" method="post" autocomplete="off">
+    <input type="text" name="indenfikator" placeholder="indenfikator" id="indenfikator" required>
+    <input type="text" name="ilosc" placeholder="ilośc" id="ilosc" required>
+    <div class="msg">{{ msg }}</div>
+	<input type="submit" value="Dodaj">
+{% endblock %}
