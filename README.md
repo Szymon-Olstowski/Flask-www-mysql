@@ -19,3 +19,5 @@ Do działania kodu potrzebny jest serwer mysql np. xampp (Konendy sql są w plik
 
 Strona WWW zawiera panel do logowania, rejestracji, resertowanie hasła ,zmiana hsała, dodawanie produktu do sklepu, dodanie produktu do koszyka oraz zmiana i usunięcie produktu z koszyku.
 
+Doodatkowo strona zawiera wysyłania plików na folder projektu.
+
