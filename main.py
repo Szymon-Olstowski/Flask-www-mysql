@@ -144,6 +144,33 @@ def sklep():
     else:
         #Użytkownik nie jest zalogowany przekierowanie do strony logowania
         return redirect(url_for('login'))
+@app.route('/sklep_a', methods=['GET','POST'])
+def sklep_a():
+    msg=""
+    if 'loggedin' in session:
+        if request.method == 'POST' and 'indenfikator' in request.form and "ilosc" in request.form:
+            indenfikator=request.form["indenfikator"]
+            ilosc=request.form['ilosc']
+            spr=sql.items_inf(indenfikator)
+            if spr:
+                cursor = mysql.connection.cursor()
+                account = sql.account(session)
+                cursor.execute("SELECT * FROM sklep where indenfikator= %s",(indenfikator,))
+                cena=cursor.fetchone()
+                print(cena[5])
+                cena_cal=cena[5]*int(ilosc)
+                cursor.execute("SELECT nazwa_produktu FROM sklep where indenfikator= %s",(indenfikator,))
+                nazwa=cursor.fetchone()
+                #doawanie produtu do bazy danych
+                cursor.execute("INSERT INTO items VALUES (NULL, %s, %s,%s,%s,%s)",(indenfikator,ilosc,cena_cal,account[1],nazwa))
+                mysql.connection.commit()
+                akt=account[7]+cena_cal
+                sql.money(akt,account[1])
+            else:
+                return redirect(url_for('sklep'))
+    else:
+        return redirect(url_for('login'))
+    return redirect(url_for('koszyk'))
 @app.route('/pythonlogin/data',methods=['GET', 'POST'])
 def data():
     msg=''
@@ -191,34 +218,6 @@ def password_resert():
         "Proszę wypełnić folmurarz"
     # Show registration form with message (if any)
     return render_template('password_resert.html', msg=msg)
-@app.route('/pythonlogin/items',methods=['GET', 'POST'])
-def items():
-    msg=""
-    if 'loggedin' in session:
-        if request.method == 'POST' and 'indenfikator' in request.form and "ilosc" in request.form:
-            indenfikator=request.form["indenfikator"]
-            ilosc=request.form['ilosc']
-            spr=sql.items_inf(indenfikator)
-            if spr:
-                cursor = mysql.connection.cursor()
-                account = sql.account(session)
-                cursor.execute("SELECT * FROM sklep where indenfikator= %s",(indenfikator,))
-                cena=cursor.fetchone()
-                print(cena[5])
-                cena_cal=cena[5]*int(ilosc)
-                cursor.execute("SELECT nazwa_produktu FROM sklep where indenfikator= %s",(indenfikator,))
-                nazwa=cursor.fetchone()
-                #doawanie produtu do bazy danych
-                cursor.execute("INSERT INTO items VALUES (NULL, %s, %s,%s,%s,%s)",(indenfikator,ilosc,cena_cal,account[1],nazwa))
-                mysql.connection.commit()
-                akt=account[7]+cena_cal
-                sql.money(akt,account[1])
-                msg="dodano produkt do kosza"
-            else:
-                msg="nieprawidłowy indenfikator"
-    else:
-        return render_template('login.html', msg=msg) 
-    return render_template('items.html', msg=msg) 
 @app.route('/pythonlogin/koszyk',methods=['GET', 'POST'])
 def koszyk():
     if 'loggedin' in session:
@@ -230,9 +229,8 @@ def koszyk():
         else:
             return redirect(url_for('sklep'))
         return render_template('koszyk.html',sklepDetalis=sklepDetalis,account=account)
-@app.route('/pythonlogin/items_change',methods=['GET', 'POST'])
+@app.route('/items_change',methods=['GET', 'POST'])
 def items_change():
-    msg=""
     if 'loggedin' in session:
         if request.method == 'POST' and 'indenfikator' in request.form and "id" in request.form and "ilosc" in request.form and "usun":
             indenfikator=request.form["indenfikator"]
@@ -255,7 +253,6 @@ def items_change():
                         sql.money(akt,account[1])
                         cursor.execute("DELETE FROM items where id=%s",(id,))
                         mysql.connection.commit()
-                        msg="Usunięto produkt"
                     else:
                         if t_b<int(ilosc):
                             cena_cal=cena[0]*int(ilosc)
@@ -265,7 +262,6 @@ def items_change():
                             test=cena_cal-int(t[3])
                             akt=int(account[7])+test
                             sql.money(akt,account[1])
-                            msg="Dodanie kwoty"
                         if t_b>int(ilosc):
                             cena_cal=cena[0]*int(ilosc)
                             sql.koszyk_cena(cena_cal,id)
@@ -273,12 +269,12 @@ def items_change():
                             test=int(t[3])-cena_cal
                             akt=int(account[7])-test
                             sql.money(akt,account[1])
-                            msg="Usuwanie kwoty"
             else:
-                msg="nieprawidłowy indenfikator"
+                return redirect(url_for('koszyk'))
     else:
-        return render_template('login.html', msg=msg)
-    return render_template('items_change.html', msg=msg) 
+        return redirect(url_for('login'))
+    return redirect(url_for('koszyk'))
+    
 if __name__ == '__main__':
 #zmień adres ip odowiedni dla swojej sieći
     app.run(host="192.168.0.220")

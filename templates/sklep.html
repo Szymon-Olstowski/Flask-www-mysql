@@ -17,9 +17,11 @@
     <tr>
         <td>{{sklep[1]}}</td><td>{{sklep[2]}}</td><td>{{sklep[3]}}</td><td>{{sklep[4]}}</td><td>{{sklep[5]}}</td><td>{{sklep[6]}}</td>
     </tr>
-    </tr>
-    </tr>
     {% endfor %}
 </table>
-<a href="{{url_for('items') }}">Items wybór</a>
+<form action="/sklep_a" method="post" enctype="multipart/form-data">
+    <td><input type="text" name="indenfikator" placeholder="indenfikator" id="indenfikator" required></td>
+    <td><input type="text" name="ilosc" placeholder="ilosć" id="ilosc" required></td>
+    <td><input type="submit" /></td>
+</form>
 {% endblock %}
