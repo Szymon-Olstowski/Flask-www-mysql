@@ -1,4 +1,4 @@
-# Flask-www-mysql version 1.0
+# Flask-www-mysql version beta-1.2
 Strona internetowa sklepu przy użyciu flask oraz bazy danych mysql
 
 Wymagania:
