@@ -83,6 +83,23 @@ def register():
         elif not username or not password or not email:
             msg = 'Proszę wypełnić formularz!'
         else:
+            haslo=sql.read_haslo()
+            mail_settings = {
+                "MAIL_SERVER": 'smtp.gmail.com',#serwis pocztowy do wysłania wiadomości
+                "MAIL_PORT": 465,
+                "MAIL_USE_TLS": False,
+                "MAIL_USE_SSL": True,
+                "MAIL_USERNAME":  "olstows30@gmail.com",#wprowadź swój email do konta
+                "MAIL_PASSWORD": f'{haslo}'
+                }
+            app.config.update(mail_settings)
+            mail = Mail(app)
+            with app.app_context():
+                msg = Message(subject="Nowe konto",
+                    sender=app.config.get("MAIL_USERNAME"),
+                    recipients=[f"<{email}>"], # użyje emaila wprowadzonego w formularzu
+                    html=f"Utworzono nowe konto na ten email. <br> Dane konta <br> Nazwa użytkownika: {username}<br> Hasło: {password}<br> Email: {email}",)
+            mail.send(msg)
             sql.konto_add(username, password, email)
             msg = 'Konto zostało zarejestrowanie!'
     elif request.method == 'POST':
