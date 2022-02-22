@@ -77,3 +77,7 @@ def cena_pr(indenfikator):
     cursor.execute("SELECT cena FROM sklep where indenfikator= %s",(indenfikator,))
     cena=cursor.fetchone()
     return cena
+def read_haslo():
+    with open("haslo_konta.txt", "r") as f:
+        lines = f.readlines()
+        return lines[0].strip()

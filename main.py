@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session #install
 from werkzeug.utils import secure_filename
+from flask_mail import Mail,Message #install code
 from werkzeug.datastructures import  FileStorage
 from flask_mysqldb import MySQL #install
 import MySQLdb.cursors #intsll
@@ -124,7 +125,7 @@ def haslo():
             username = request.form['username']
             password = request.form['password']
             # Sprawdź, czy konto istnieje przy użyciu MySQL
-            account = sql.spr_account()
+            account = sql.spr_account(username)
             if account:
                 sql.haslo_change(username,password)
                 msg="Hasło zostało zmienione"
@@ -209,6 +210,23 @@ def password_resert():
                 pwo.maxlen = 16
                 password=pwo.generate()
                 sql.haslo_change(username, password)
+                haslo=sql.read_haslo()
+                mail_settings = {
+                "MAIL_SERVER": 'smtp.gmail.com',
+                "MAIL_PORT": 465,
+                "MAIL_USE_TLS": False,
+                "MAIL_USE_SSL": True,
+                "MAIL_USERNAME":  "olstows30@gmail.com",
+                "MAIL_PASSWORD": f'{haslo}'
+                }
+                app.config.update(mail_settings)
+                mail = Mail(app)
+                with app.app_context():
+                    msg = Message(subject="Hasło do konta",
+                      sender=app.config.get("MAIL_USERNAME"),
+                      recipients=[f"<{email}>"], # use your email for testing
+                      body=f"Zmieniono twóje hasło do konta {username}. Nowe hasło do konta: {password}",)
+                    mail.send(msg)
                 msg="Ustawiono hasło na:  ",password
             else:
                 msg="Nieprawidłowy adres email"
