@@ -1,8 +1,6 @@
 # Flask-www-mysql version beta-1.2
 Strona internetowa sklepu przy użyciu flask oraz bazy danych mysql
 
-Wymagania:
-
 Python do 3.9< x
 
 Do tego dodatki dd pythona:
