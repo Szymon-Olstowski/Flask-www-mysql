@@ -212,11 +212,11 @@ def password_resert():
                 sql.haslo_change(username, password)
                 haslo=sql.read_haslo()
                 mail_settings = {
-                "MAIL_SERVER": 'smtp.gmail.com',
+                "MAIL_SERVER": 'smtp.gmail.com', #serwis pocztowy do wysłania wiadomości
                 "MAIL_PORT": 465,
                 "MAIL_USE_TLS": False,
                 "MAIL_USE_SSL": True,
-                "MAIL_USERNAME":  "olstows30@gmail.com",
+                "MAIL_USERNAME":  "testowy@gmail.com", # użyje emaila wprowadzonego w formularzu
                 "MAIL_PASSWORD": f'{haslo}'
                 }
                 app.config.update(mail_settings)
