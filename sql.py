@@ -81,3 +81,14 @@ def read_haslo():
     with open("haslo_konta.txt", "r") as f:
         lines = f.readlines()
         return lines[0].strip()
+def mail_settings():
+    haslo=read_haslo()
+    mail_settings = {
+        "MAIL_SERVER": 'smtp.gmail.com',#serwis pocztowy do wysłania wiadomości
+        "MAIL_PORT": 465,
+        "MAIL_USE_TLS": False,
+        "MAIL_USE_SSL": True,
+        "MAIL_USERNAME":  "olstows30@gmail.com",#wprowadź swój email do konta
+        "MAIL_PASSWORD": f'{haslo}'
+        }
+    return mail_settings

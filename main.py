@@ -1,3 +1,4 @@
+from html.entities import html5
 from flask import Flask, render_template, request, redirect, url_for, session #install
 from werkzeug.utils import secure_filename
 from flask_mail import Mail,Message #install code
@@ -83,15 +84,7 @@ def register():
         elif not username or not password or not email:
             msg = 'Proszę wypełnić formularz!'
         else:
-            haslo=sql.read_haslo()
-            mail_settings = {
-                "MAIL_SERVER": 'smtp.gmail.com',#serwis pocztowy do wysłania wiadomości
-                "MAIL_PORT": 465,
-                "MAIL_USE_TLS": False,
-                "MAIL_USE_SSL": True,
-                "MAIL_USERNAME":  "olstows30@gmail.com",#wprowadź swój email do konta
-                "MAIL_PASSWORD": f'{haslo}'
-                }
+            mail_settings=sql.mail_settings()
             app.config.update(mail_settings)
             mail = Mail(app)
             with app.app_context():
@@ -202,7 +195,7 @@ def data():
             cena = request.form['cena']
             indenfikator = request.form['indenfikator']
             sql.data(nazwa_produktu,producent,kategoria,typ,cena,indenfikator)
-            msg="Dodano produkt bobra"
+            msg="Dodano produkt do sklepu"
         elif request.method == 'POST':
             # Formularz jest pusty... (brak danych POST)
             msg = 'Proszę wypełnić formularz!'
@@ -227,21 +220,13 @@ def password_resert():
                 pwo.maxlen = 16
                 password=pwo.generate()
                 sql.haslo_change(username, password)
-                haslo=sql.read_haslo()
-                mail_settings = {
-                "MAIL_SERVER": 'smtp.gmail.com', #serwis pocztowy do wysłania wiadomości
-                "MAIL_PORT": 465,
-                "MAIL_USE_TLS": False,
-                "MAIL_USE_SSL": True,
-                "MAIL_USERNAME":  "testowy@gmail.com", # użyje emaila wprowadzonego w formularzu
-                "MAIL_PASSWORD": f'{haslo}'
-                }
+                mail_settings=sql.mail_settings()
                 app.config.update(mail_settings)
                 mail = Mail(app)
                 with app.app_context():
                     msg = Message(subject="Hasło do konta",
                       sender=app.config.get("MAIL_USERNAME"),
-                      recipients=[f"<{email}>"], # use your email for testing
+                      recipients=[f"<{email}>"], # użyje emaila wprowadzonego w formularzu
                       body=f"Zmieniono twóje hasło do konta {username}. Nowe hasło do konta: {password}",)
                     mail.send(msg)
                 msg="Ustawiono hasło na:  ",password
