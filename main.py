@@ -484,7 +484,32 @@ def sklep_edit():
                                 text = f"Admin {account[1]} zmiejszył cenę produktu do sklepu z adresu ip: {ip} "
                                 pb = Pushbullet(API_KEY)
                                 push = pb.push_note("Sklep", text)
-            else:
+                    else:
+                        print("twt")
+                        if usun=="TAK":
+                            cursor.execute("DELETE FROM Sklep WHERE indenfikator=%s",(indenfikator,))
+                            mysql.connection.commit()
+                            #powiadomienie
+                            API_KEY = sql.api_key()
+                            text = f"Admin {account[1]} usunął produkt z sklepu z adresu ip: {ip} "
+                            pb = Pushbullet(API_KEY)
+                            push = pb.push_note("Sklep", text)
+                        else:
+                            if cena[0]<int(cena_t):
+                                sql.sklep_update(int(cena_t),indenfikator)
+                                #powiadomienie
+                                API_KEY = sql.api_key()
+                                text = f"Admin {account[1]} zwiększył cenę produktu do sklepu z adresu ip: {ip} "
+                                pb = Pushbullet(API_KEY)
+                                push = pb.push_note("Sklep", text)
+                            if cena[0]>int(cena_t):
+                                sql.sklep_update(int(cena_t),indenfikator)
+                                #powiadomienie
+                                API_KEY = sql.api_key()
+                                text = f"Admin {account[1]} zmiejszył cenę produktu do sklepu z adresu ip: {ip} "
+                                pb = Pushbullet(API_KEY)
+                                push = pb.push_note("Sklep", text)
+            else:   
                 return redirect(url_for('koszyk_user'))
         else:
             return redirect(url_for('home'))
