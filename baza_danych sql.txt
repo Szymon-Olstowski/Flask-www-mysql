@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS `accounts` (
 	`login_as` varchar(50) NOT NUll,
 	`haslo_change` varchar(50) NOT NULL,
 	`money` int(11) NOT NULL,
+	`permisje` varchar(50) NOT NULL,
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;
 CREATE TABLE IF NOT EXISTS `sklep` (

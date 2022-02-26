@@ -5,3 +5,4 @@ password_generator==0.1.0
 random_password_generator==2.2.0
 Werkzeug==2.0.2
 Flask_Email==1.4.4
+pushbullet.py==0.12.0

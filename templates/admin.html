@@ -1,0 +1,11 @@
+{% extends 'layout.html' %}
+{% block title %}Admin{% endblock %}
+{% block content %}
+<h2>Strona Admina</h2>
+<div class="msg">{{msg}} {{username}} w panelu admina</div>
+<a href="{{ url_for('permisje') }}">Ustawianie permisji</a>
+<br>
+<a href="{{ url_for('user') }}">Konta</a>
+<br>
+<a href="{{ url_for('koszyk_user') }}">Koszyk User</a>
+{% endblock %}

@@ -1,6 +1,7 @@
 from flask_mysqldb import MySQL
 import MySQLdb.cursors
 import datetime
+from pushbullet import pushbullet
 mysql = MySQL()
 def account(session):
     cursor = mysql.connection.cursor()
@@ -25,12 +26,13 @@ def spr_account(username):
     return account
 def konto_add(username,password,email):
     cena=0
+    permisje='user'
     x = datetime.datetime.now()
     stworone_koto=x.strftime("%d.%m.%Y %H:%M:%S")
     ostatnie_logowanie=x.strftime("%d.%m.%Y %H:%M:%S")
     ostatnie_zmiana_hasla=x.strftime("%d.%m.%Y %H:%M:%S")
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    cursor.execute('INSERT INTO accounts VALUES (NULL, %s, %s, %s,%s,%s,%s,%s)', (username, password, email,stworone_koto,ostatnie_logowanie,ostatnie_zmiana_hasla,cena))
+    cursor.execute('INSERT INTO accounts VALUES (NULL, %s, %s, %s,%s,%s,%s,%s,%s)', (username, password, email,stworone_koto,ostatnie_logowanie,ostatnie_zmiana_hasla,cena,permisje))
     mysql.connection.commit()
 def haslo_change(username,password):
     x = datetime.datetime.now()
@@ -50,6 +52,16 @@ def data(nazwa_produktu,producent,kategoria,typ,cena,indenfikator):
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
     cursor.execute('INSERT INTO sklep VALUES (NULL, %s, %s,%s,%s,%s,%s)', (nazwa_produktu,producent,kategoria,typ,cena,indenfikator))
     mysql.connection.commit()
+def data_spr(nazwa_produktu):
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    cursor.execute('SELECT * FROM sklep WHERE nazwa_produktu=%s', (nazwa_produktu,))
+    data = cursor.fetchone()
+    return data
+def data_spr1(indenfikator):
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    cursor.execute('SELECT * FROM sklep WHERE indenfikator=%s', (indenfikator,))
+    data1 = cursor.fetchone()
+    return data1
 def spr_email(username,email):
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
     cursor.execute('SELECT username=%s FROM accounts WHERE email = %s', (username,email))
@@ -63,6 +75,10 @@ def items_inf(indenfikator):
 def koszyk_cena(cena_cal,id):
     cursor = mysql.connection.cursor()
     cursor.execute("UPDATE items set cena=%s WHERE id=%s",(cena_cal,id))
+    mysql.connection.commit()
+def koszyk_cena_2(cena_cal,konto):
+    cursor = mysql.connection.cursor()
+    cursor.execute("UPDATE items set cena=%s WHERE konto=%s",(cena_cal,konto))
     mysql.connection.commit()
 def koszyk_ilosc(ilosc,id):
     cursor = mysql.connection.cursor()
@@ -92,3 +108,32 @@ def mail_settings():
         "MAIL_PASSWORD": f'{haslo}'
         }
     return mail_settings
+def read_pushbullet_key():
+    with open("key_pushbullet.txt", "r") as f:
+        lines = f.readlines()
+        return lines[0].strip()
+def api_key():
+    API_KEY = "o.RcxRiFFajFGz2Us6IpsY1ZCt7v6gg395"#Weź kod z strony Pushbullet
+    return API_KEY
+def permisje(permisje,username):
+    cursor = mysql.connection.cursor()
+    cursor.execute('UPDATE accounts SET permisje=%s WHERE username=%s', (permisje,username))
+    mysql.connection.commit()
+def user():
+    cursor=mysql.connection.cursor()
+    sklep=cursor.execute("SELECT * FROM accounts")
+    if sklep >0:
+        users=cursor.fetchall()
+    return users
+def user1():
+    cursor=mysql.connection.cursor()
+    sklep=cursor.execute("SELECT * FROM items")
+    if sklep >0:
+        users=cursor.fetchall()
+    else:
+        users=cursor.fetchall()
+    return users
+def sklep_update(cena,indenfikator):
+    cursor = mysql.connection.cursor()
+    cursor.execute('UPDATE sklep SET cena=%s WHERE indenfikator=%s', (cena,indenfikator))
+    mysql.connection.commit()

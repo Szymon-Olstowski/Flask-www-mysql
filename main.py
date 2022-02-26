@@ -1,5 +1,5 @@
 from html.entities import html5
-from flask import Flask, render_template, request, redirect, url_for, session #install
+from flask import Flask, render_template, request, redirect, url_for, session,jsonify #install
 from werkzeug.utils import secure_filename
 from flask_mail import Mail,Message #install code
 from werkzeug.datastructures import  FileStorage
@@ -9,6 +9,7 @@ import re
 from password_generator import PasswordGenerator #install
 import datetime
 import sql
+from pushbullet import Pushbullet #install
 app = Flask(__name__)
 # Zmień to na swój tajny klucz (może być dowolny, to dla dodatkowej ochrony)
 app.secret_key = 'testowany_klucz'
@@ -42,12 +43,13 @@ def login():
             session['loggedin'] = True
             session['id'] = account['id']
             session['username'] = account['username']
-            # Przekieruj na stronę główną
-            #x = datetime.datetime.now()
-            #ostatnie_logowanie=x.strftime("%d.%m.%Y %H:%M:%S")
-            #cursor.execute('UPDATE accounts SET login_as=%s WHERE username=%s', (ostatnie_logowanie,username))
-            #mysql.connection.commit()
             sql.login_as(username)
+            ip=request.remote_addr
+            #powiadomienie
+            API_KEY = sql.api_key()
+            text = f"Zalogowano: {username} pomyślnie do serwisu z adresu ip: {ip} "
+            pb = Pushbullet(API_KEY)
+            push = pb.push_note("Logowanie", text)
             return redirect(url_for('home'))
         else:
             # Konto nie istnieje lub niepoprawna nazwa użytkownika/hasło
@@ -61,6 +63,12 @@ def logout():
    session.pop('loggedin', None)
    session.pop('id', None)
    session.pop('username', None)
+   ip=request.remote_addr
+   #powiadomienie
+   API_KEY = sql.api_key()
+   text = f"Wylogowamo użytkonika pomyślnie z serwisu z adresu ip: {ip} "
+   pb = Pushbullet(API_KEY)
+   push = pb.push_note("Wylogowano", text)
    # Redirect to login page
    return redirect(url_for('login'))
 @app.route('/pythonlogin/register', methods=['GET', 'POST'])
@@ -93,6 +101,12 @@ def register():
                     recipients=[f"<{email}>"], # użyje emaila wprowadzonego w formularzu
                     html=f"Utworzono nowe konto na ten email. <br> Dane konta <br> Nazwa użytkownika: {username}<br> Hasło: {password}<br> Email: {email}",)
             mail.send(msg)
+            ip=request.remote_addr
+            #powiadomienie
+            API_KEY = sql.api_key()
+            text = f"Dodano konto {username} do serwisu z adrsu ip: {ip} "
+            pb = Pushbullet(API_KEY)
+            push = pb.push_note("Rejestracja", text)
             sql.konto_add(username, password, email)
             msg = 'Konto zostało zarejestrowanie!'
     elif request.method == 'POST':
@@ -125,6 +139,12 @@ def uploader():
     if request.method == 'POST':
         f =request.files['file']
         f.save(secure_filename(f.filename))
+        ip=request.remote_addr
+        #powiadomienie
+        API_KEY = sql.api_key()
+        text = f"Dodano plik do serwisu z adrsu ip: {ip} "
+        pb = Pushbullet(API_KEY)
+        push = pb.push_note("Pliki", text)
         return render_template('home.html')
 @app.route('/pythonlogin/haslo',methods=['GET', 'POST'])
 def haslo():
@@ -139,6 +159,12 @@ def haslo():
             if account:
                 sql.haslo_change(username,password)
                 msg="Hasło zostało zmienione"
+                ip=request.remote_addr
+                #powiadomienie
+                API_KEY = sql.api_key()
+                text = f"Zmieniono hasło dla konta {username} do serwisu z adrsu ip: {ip} "
+                pb = Pushbullet(API_KEY)
+                push = pb.push_note("Zmiana hasła", text)
         elif request.method == 'POST':
             # Formularz jest pusty... (brak danych POST)
             msg = 'Proszę wypełnić formularz!'
@@ -186,19 +212,39 @@ def sklep_a():
 def data():
     msg=''
     if 'loggedin' in session:
-        if request.method == 'POST' and 'nazwa_produktu' in request.form and 'producent' in request.form:
-            # Utwarza nowe wartości do sklepu
-            nazwa_produktu = request.form['nazwa_produktu']
-            producent = request.form['producent']
-            kategoria = request.form['kategoria']
-            typ= request.form['typ']
-            cena = request.form['cena']
-            indenfikator = request.form['indenfikator']
-            sql.data(nazwa_produktu,producent,kategoria,typ,cena,indenfikator)
-            msg="Dodano produkt do sklepu"
-        elif request.method == 'POST':
-            # Formularz jest pusty... (brak danych POST)
-            msg = 'Proszę wypełnić formularz!'
+        account = sql.account(session)
+        if account[8]=="admin":
+            if request.method == 'POST' and 'nazwa_produktu' in request.form and 'producent' in request.form:
+                # Utwarza nowe wartości do sklepu
+                nazwa_produktu = request.form['nazwa_produktu']
+                producent = request.form['producent']
+                kategoria = request.form['kategoria']
+                typ= request.form['typ']
+                cena = request.form['cena']
+                indenfikator = request.form['indenfikator']
+                data=sql.data_spr(nazwa_produktu)
+                data1=sql.data_spr1(indenfikator)
+                if data==None and data1==None:
+                    sql.data(nazwa_produktu,producent,kategoria,typ,cena,indenfikator)
+                    msg="Dodano produkt do sklepu"
+                    ip=request.remote_addr
+                    #powiadomienie
+                    API_KEY = sql.api_key()
+                    text = f"Dodano produkt {nazwa_produktu} do sklepu z adrsu ip: {ip} przez {account[1]} "
+                    pb = Pushbullet(API_KEY)
+                    push = pb.push_note("Sklep", text)
+                else:
+                    if data!=None and data1!=None:
+                        msg="Nazwa proddukru i indenfikator istnieją się w sklepie"
+                    if data:
+                        msg="Ta nazwa produktu istenieje w sklepie"
+                    if data1:
+                        msg="Ten indenfikator istnieje w sklepie"
+            elif request.method == 'POST':
+                # Formularz jest pusty... (brak danych POST)
+                msg = 'Proszę wypełnić formularz!'
+        else:
+           msg="Nie masz dostępu do dowawania produktów"
     else:
         #Użytkownik nie jest zalogowany przekierowanie do strony logowania
         return redirect(url_for('login'))
@@ -229,6 +275,12 @@ def password_resert():
                       recipients=[f"<{email}>"], # użyje emaila wprowadzonego w formularzu
                       body=f"Zmieniono twóje hasło do konta {username}. Nowe hasło do konta: {password}",)
                     mail.send(msg)
+                ip=request.remote_addr
+                #powiadomienie
+                API_KEY = sql.api_key()
+                text = f"Zmieniono hasło dla konta {username} do serwisu z adrsu ip: {ip} "
+                pb = Pushbullet(API_KEY)
+                push = pb.push_note("Zmiana hasła", text)
                 msg="Ustawiono hasło na:  ",password
             else:
                 msg="Nieprawidłowy adres email"
@@ -261,7 +313,6 @@ def items_change():
             spr=sql.items_inf(indenfikator)
             if spr:
                 account = sql.account(session)
-                #cursor.execute("SELECT cena FROM sklep where indenfikator= %s",(indenfikator,))
                 cena=sql.cena_pr(indenfikator)
                 cursor.execute("SELECT * FROM items where id=%s",(id))
                 t=cursor.fetchone()
@@ -294,7 +345,153 @@ def items_change():
     else:
         return redirect(url_for('login'))
     return redirect(url_for('koszyk'))
-    
+@app.route('/admin',methods=['GET', 'POST'])
+def admin():
+    msg=''
+    if 'loggedin' in session:
+        account = sql.account(session)
+        if account[8]=="admin":
+            msg="Witaj"
+        else:
+            return redirect(url_for('home'))
+    else:
+        return redirect(url_for('login'))
+    return render_template('admin.html',msg=msg,username=session['username'])
+@app.route('/permisje',methods=['GET', 'POST'])
+def permisje():
+    msg=''
+    if 'loggedin' in session:
+        account = sql.account(session)
+        if account[8]=="admin":
+            if request.method == 'POST' and 'username' in request.form and "permisje" in request.form:
+                username= request.form['username']
+                permisje= request.form['permisje']
+                test=sql.spr_account(username)
+                if test:
+                    sql.permisje(permisje,username)
+                    ip=request.remote_addr
+                    #powiadomienie
+                    API_KEY = sql.api_key()
+                    text = f"Dla konta {username} zmieniono permisje z adresu ip: {ip} "
+                    pb = Pushbullet(API_KEY)
+                    push = pb.push_note("Permisje", text)
+                    msg="Zmiana permisji została wykonana"
+                else:
+                    msg="Nie ma takiego użytkownika"
+            else:
+                msg='Proszę wypełnić formularz!'
+        else:
+            return redirect(url_for('home'))
+    else:
+        return redirect(url_for('login'))
+    return render_template('permisje.html',msg=msg)
+@app.route("/user")
+def user():
+    if 'loggedin' in session:
+        account = sql.account(session)
+        if account[8]=="admin":
+            users=sql.user()
+            return render_template('users.html',users=users)
+        else:
+            return redirect(url_for('home'))
+    else:
+        #Użytkownik nie jest zalogowany przekierowanie do strony logowania
+        return redirect(url_for('login'))
+@app.route('/koszyk_user')
+def koszyk_user():
+    msg=''
+    if 'loggedin' in session:
+        account = sql.account(session)
+        if account[8]=="admin":
+            users=sql.user1()
+            if users==None:
+                msg="Brak przediotów w koszyku"
+            else:
+                msg="Działa"
+                return render_template('koszyk_users.html',users=users,msg=msg)
+        else:
+            return redirect(url_for('home'))
+    else:
+        #Użytkownik nie jest zalogowany przekierowanie do strony logowania
+        return redirect(url_for('login'))
+@app.route('/sklep_edit',methods=['GET', 'POST'])
+def sklep_edit():
+    if 'loggedin' in session:
+        account = sql.account(session)
+        if account[8]=="admin":
+            if request.method == 'POST' and 'indenfikator' in request.form and "usun" in request.form and "cena_t" in request.form:
+                indenfikator=request.form["indenfikator"]
+                usun=request.form['usun']
+                cena_t=request.form['cena_t']
+                cursor = mysql.connection.cursor()
+                spr=sql.items_inf(indenfikator)
+                ip=request.remote_addr
+                if spr:
+                    account = sql.account(session)
+                    cena=sql.cena_pr(indenfikator)
+                    cursor.execute("SELECT * FROM items where indenfikator=%s",(indenfikator,))
+                    t=cursor.fetchall()
+                    if t:
+                        if usun=="TAK":
+                            for t in t:
+                                print(t)
+                                cursor.execute("SELECT * FROM accounts where username=%s",(t[4],))
+                                konto=cursor.fetchone()
+                                akt=int(konto[7])-int(t[3])
+                                cursor = mysql.connection.cursor()
+                                sql.money(akt,konto[1])
+                                cursor.execute("DELETE FROM items where indenfikator=%s",(indenfikator,))
+                                mysql.connection.commit()
+                            cursor.execute("DELETE FROM Sklep WHERE indenfikator=%s",(indenfikator,))
+                            mysql.connection.commit()
+                            #powiadomienie
+                            API_KEY = sql.api_key()
+                            text = f"Admin {account[1]} usunął produkt z sklepu z adresu ip: {ip} "
+                            pb = Pushbullet(API_KEY)
+                            push = pb.push_note("Sklep", text)
+                        else:
+                            if cena[0]<int(cena_t):
+                                for t in t:
+                                    cursor.execute("SELECT * FROM accounts where username=%s",(t[4],))
+                                    konto=cursor.fetchone()
+                                    cena_cal=int(cena_t)*t[2]
+                                    print(cena_cal)
+                                    sql.koszyk_cena_2(cena_cal,konto[1])
+                                    test=cena_cal-int(t[3])
+                                    print(test)
+                                    akt=int(konto[7])+test
+                                    sql.money(akt,konto[1])
+                                sql.sklep_update(int(cena_t),indenfikator)
+                                #powiadomienie
+                                API_KEY = sql.api_key()
+                                text = f"Admin {account[1]} zwiększył cenę produktu do sklepu z adresu ip: {ip} "
+                                pb = Pushbullet(API_KEY)
+                                push = pb.push_note("Sklep", text)
+                            if cena[0]>int(cena_t):
+                                for t in t:
+                                    cursor.execute("SELECT * FROM accounts where username=%s",(t[4],))
+                                    konto=cursor.fetchone()
+                                    cena_cal=int(cena_t)*t[2]
+                                    print(cena_cal)
+                                    sql.koszyk_cena_2(cena_cal,konto[1])
+                                    test=int(t[3])-cena_cal
+                                    print(test)
+                                    akt=int(konto[7])-test
+                                    sql.money(akt,konto[1])
+                                sql.sklep_update(int(cena_t),indenfikator)
+                                #powiadomienie
+                                API_KEY = sql.api_key()
+                                text = f"Admin {account[1]} zmiejszył cenę produktu do sklepu z adresu ip: {ip} "
+                                pb = Pushbullet(API_KEY)
+                                push = pb.push_note("Sklep", text)
+            else:
+                return redirect(url_for('koszyk_user'))
+        else:
+            return redirect(url_for('home'))
+    else:
+        return redirect(url_for('login'))
+    return redirect(url_for('koszyk_user'))
+
 if __name__ == '__main__':
 #zmień adres ip odowiedni dla swojej sieći
     app.run(host="192.168.0.220")

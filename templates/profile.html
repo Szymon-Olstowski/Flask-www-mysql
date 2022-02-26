@@ -42,5 +42,8 @@
             <td>{{ account['money'] }} zł</td>
         </tr>
     </table>
+    {% if account[8] == admin %}
+    <a href="{{ url_for('admin') }}">Panel admina</a>
+    {%endif %}
 </div>
 {% endblock %}
