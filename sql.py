@@ -113,7 +113,7 @@ def read_pushbullet_key():
         lines = f.readlines()
         return lines[0].strip()
 def api_key():
-    API_KEY = "o.RcxRiFFajFGz2Us6IpsY1ZCt7v6gg395"#Weź kod z strony Pushbullet
+    API_KEY = ""#Weź kod z strony Pushbullet
     return API_KEY
 def permisje(permisje,username):
     cursor = mysql.connection.cursor()
