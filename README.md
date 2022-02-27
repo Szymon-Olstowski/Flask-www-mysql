@@ -12,6 +12,7 @@ Do tego dodatki dd pythona:
       <li>random_password_generator</li>
       <li>Werkzeug</li>
       <li>Flask_mail</li>
+      <li>Pushbullet</li>
 	</ul>
 	
 Do działania kodu potrzebny jest serwer mysql np. xampp (Konendy sql są w pliku baza_danych sql.txt)
