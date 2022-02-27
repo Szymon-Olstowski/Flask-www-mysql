@@ -1,4 +1,4 @@
-# Flask-www-mysql version beta-1.2
+# Flask-www-mysql
 Strona internetowa sklepu przy użyciu flask oraz bazy danych mysql
 
 Python od 3.10.0<x:
