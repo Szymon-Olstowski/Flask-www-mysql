@@ -11,13 +11,13 @@
 <!-- STOP free4u.pl -->
 <table border="1">
     <tr>
-        <td>Nazwa użytkownika</td><td>Hasło</td><td>Email</td><td>Create as</td><td>Login as</td><td>Zmiana hasła</td><td>Stan koszyka</td><td>Permisje</td>
+        <td>Nazwa użytkownika</td><td>Hasło</td><td>Email</td><td>Create as</td><td>Login as</td><td>Zmiana hasła</td><td>Stan koszyka</td><td>Permisje</td><td>Ostatnie logowanie ip</td>
     </tr>
+    
     {% for user in users %}
     <tr>
-        <td>{{user[1]}}</td><td>{{user[2]}}</td><td>{{user[3]}}</td><td>{{user[4]}}</td><td>{{user[5]}}</td><td>{{user[6]}}</td><td>{{user[7]}}</td><td>{{user[8]}}
+        <td>{{user[1]}}</td><td>{{user[2]}}</td><td>{{user[3]}}</td><td>{{user[4]}}</td><td>{{user[5]}}</td><td>{{user[6]}}</td><td>{{user[7]}}</td><td>{{user[8]}}<td>{{user[9]}}</td>
     </tr>
     {% endfor %}
 </table>
-<a href="{{ url_for('admin') }}">Panel Admina</a>
 {% endblock %}

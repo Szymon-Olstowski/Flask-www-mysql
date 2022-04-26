@@ -10,9 +10,8 @@
 		<div class="register">
 			<h1>Permisje</h1>
 			<div class="links">
-				<a href="{{ url_for('login') }}">Logowanie</a>
-				<a href="{{ url_for('register') }}" >Zarejestruj</a>
-                <a href="{{ url_for('register') }}" class="active">Permisje</a>
+				<a href="{{ url_for('message') }}" class="active">Message</a>
+                <a href="{{ url_for('permisje') }}" class="active">Permisje</a>
                 <a href="{{ url_for('admin') }}">Admin</a>
 			</div>
 			<form action="{{ url_for('permisje') }}" method="post" autocomplete="off">
