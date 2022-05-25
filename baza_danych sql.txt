@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS `accounts` (
 	`haslo_change` varchar(50) NOT NULL,
 	`money` int(11) NOT NULL,
 	`permisje` varchar(50) NOT NULL,
+        `adres_ip` varchar(50) NOT NULL,
+        `odp_yes` int(11) NOT NULL,
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;
 CREATE TABLE IF NOT EXISTS `sklep` (
@@ -29,5 +31,24 @@ CREATE TABLE IF NOT EXISTS `items` (
   	`cena` varchar(11) NOT NULL,
 	`konto` varchar(100) NOT NULL,
 	`nazwa_produktu` varchar(100) NOT NULL,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;
+CREATE TABLE IF NOT EXISTS `pytania` (
+	`id` int(11) NOT NULL AUTO_INCREMENT,
+  	`numer_pytania` int(11) NOT NULL,
+  	`odp_tak` varchar(255) NOT NULL,
+  	`a` varchar(50) NOT NULL,
+	`b` varchar(50) NOT NUll,
+	`c` varchar(50) NOT NUll,
+	`d` varchar(50) NOT NULL,
+        `tresc` varchar(500) NOT NULL,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;
+CREATE TABLE IF NOT EXISTS `odp` (
+	`id` int(11) NOT NULL AUTO_INCREMENT,
+	`username` varchar(50) NOT NULL,
+  	`numer_pytania` int(11) NOT NULL,
+  	`odp_check` varchar(50) NOT NULL,
+        `odp_wyb` varchar(50) NOT NULL,
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;
