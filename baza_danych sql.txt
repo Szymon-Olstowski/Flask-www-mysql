@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS `accounts` (
 	`permisje` varchar(50) NOT NULL,
         `adres_ip` varchar(50) NOT NULL,
         `odp_yes` int(11) NOT NULL,
+	`token` varchar(50) NOT NULL,
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;
 CREATE TABLE IF NOT EXISTS `sklep` (

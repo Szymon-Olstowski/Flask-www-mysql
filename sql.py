@@ -2,7 +2,31 @@ from flask_mysqldb import MySQL
 import MySQLdb.cursors
 import datetime
 from pushbullet import pushbullet
+import pyotp
+import qrcode
+import qrcode.image.svg
 mysql = MySQL()
+def token(username):
+    cursor = mysql.connection.cursor()
+    cursor.execute('SELECT token FROM accounts WHERE username = %s ',(username,))
+    # Pobierz jeden rekord i zwróć wynik
+    account = cursor.fetchone()
+    return account
+def reset_token(username,email):
+     #-token genrtujący 2fa
+    token=pyotp.random_base32()
+    img = qrcode.make(f'otpauth://totp/Example:{username}?secret={token}&issuer=Sklep Flask', image_factory=qrcode.image.svg.SvgImage)
+    with open(f'templates/qr_{username}.svg', 'wb') as qr:
+        img.save(qr)
+    cursor = mysql.connection.cursor()
+    cursor.execute('UPDATE accounts SET token=%s WHERE username=%s',(token,username,))
+    mysql.connection.commit()
+def accountl(username):
+    cursor = mysql.connection.cursor()
+    cursor.execute('SELECT * FROM accounts WHERE username = %s ',(username,))
+    # Pobierz jeden rekord i zwróć wynik
+    account = cursor.fetchone()
+    return account
 def account(session):
     cursor = mysql.connection.cursor()
     cursor.execute('SELECT * FROM accounts WHERE id = %s', (session["id"],))
@@ -19,20 +43,31 @@ def login_as(username):
     ostatnie_logowanie=x.strftime("%d.%m.%Y %H:%M:%S")
     cursor.execute('UPDATE accounts SET login_as=%s WHERE username=%s', (ostatnie_logowanie,username))
     mysql.connection.commit()
+def login_ip(username,ip):
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    cursor.execute('UPDATE accounts SET adres_ip=%s WHERE username=%s', (ip,username))
+    mysql.connection.commit()
+
 def spr_account(username):
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
     cursor.execute('SELECT * FROM accounts WHERE username = %s', (username,))
     account = cursor.fetchone()
     return account
-def konto_add(username,password,email):
+def konto_add(username,password,email,ip):
     cena=0
     permisje='user'
     x = datetime.datetime.now()
     stworone_koto=x.strftime("%d.%m.%Y %H:%M:%S")
     ostatnie_logowanie=x.strftime("%d.%m.%Y %H:%M:%S")
     ostatnie_zmiana_hasla=x.strftime("%d.%m.%Y %H:%M:%S")
+    ilosc_odp=0
+    #-token genrtujący 2fa
+    token=pyotp.random_base32()
+    img = qrcode.make(f'otpauth://totp/Example:{username}?secret={token}&issuer=Sklep Flask', image_factory=qrcode.image.svg.SvgImage)
+    with open(f'templates/qr_{username}.svg', 'wb') as qr:
+        img.save(qr)
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    cursor.execute('INSERT INTO accounts VALUES (NULL, %s, %s, %s,%s,%s,%s,%s,%s)', (username, password, email,stworone_koto,ostatnie_logowanie,ostatnie_zmiana_hasla,cena,permisje))
+    cursor.execute('INSERT INTO accounts VALUES (NULL, %s, %s, %s,%s,%s,%s,%s,%s,%s,%s,%s)', (username, password, email,stworone_koto,ostatnie_logowanie,ostatnie_zmiana_hasla,cena,permisje,ip,ilosc_odp,token))
     mysql.connection.commit()
 def haslo_change(username,password):
     x = datetime.datetime.now()
@@ -97,22 +132,16 @@ def read_haslo():
     with open("haslo_konta.txt", "r") as f:
         lines = f.readlines()
         return lines[0].strip()
-def mail_settings():
-    haslo=read_haslo()
-    mail_settings = {
-        "MAIL_SERVER": 'smtp.gmail.com',#serwis pocztowy do wysłania wiadomości
-        "MAIL_PORT": 465,
-        "MAIL_USE_TLS": False,
-        "MAIL_USE_SSL": True,
-        "MAIL_USERNAME":  "olstows30@gmail.com",#wprowadź swój email do konta
-        "MAIL_PASSWORD": f'{haslo}'
-        }
-    return mail_settings
-def read_pushbullet_key():
-    with open("key_pushbullet.txt", "r") as f:
-        lines = f.readlines()
-        return lines[0].strip()
+def message_username():
+    USERNAME="szymonus03@wp.pl"
+    return USERNAME
+def message_token():
+    token=""
+    return token
 def api_key():
+    API_KEY = ""#Weź kod z strony Pushbullet
+    return API_KEY
+def api_key1():
     API_KEY = ""#Weź kod z strony Pushbullet
     return API_KEY
 def permisje(permisje,username):
@@ -137,3 +166,47 @@ def sklep_update(cena,indenfikator):
     cursor = mysql.connection.cursor()
     cursor.execute('UPDATE sklep SET cena=%s WHERE indenfikator=%s', (cena,indenfikator))
     mysql.connection.commit()
+def pytania():
+    cursor=mysql.connection.cursor()
+    pytanie=cursor.execute("SELECT * FROM pytania")
+    if pytanie >0:
+        pytanie=cursor.fetchall()
+    else:
+        pytanie=cursor.fetchall()
+    return pytanie
+def pytania_pr(numer_pytania):
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT * FROM pytania where numer_pytania= %s",(numer_pytania,))
+    cena=cursor.fetchone()
+    return cena
+def add_wynik(username,numer_pytania,odp,wybrana_odp):
+    cursor = mysql.connection.cursor()
+    cursor.execute('INSERT INTO odp VALUES(NULL,%s,%s,%s,%s)',(username,numer_pytania,odp,wybrana_odp))
+    mysql.connection.commit()
+def wynik(ilosc,username):
+    cursor = mysql.connection.cursor()
+    cursor.execute('UPDATE accounts SET odp_yes=%s WHERE username=%s',(ilosc,username))
+    mysql.connection.commit()
+def spr_ilosc():
+    cursor = mysql.connection.cursor()
+    cursor.execute('SELECT COUNT(*) FROM pytania')
+    ilosc=cursor.fetchone()
+    return ilosc
+def spr_ilosc_username(username):
+    cursor = mysql.connection.cursor()
+    cursor.execute('SELECT COUNT(*) FROM odp WHERE username=%s',(username,))
+    ilosc=cursor.fetchone()
+    return ilosc
+def odp(username):
+    cursor = mysql.connection.cursor()
+    odp=cursor.execute('SELECT * FROM odp WHERE username=%s',(username,))
+    if odp >0:
+        odp=cursor.fetchall()
+    else:
+        odp=cursor.fetchall()
+    return odp
+def pytania_add(numer_pytania,odp_tak,a,b,c,d,tresc):
+    cursor = mysql.connection.cursor()
+    cursor=cursor.execute('INSERT INTO pytania VALUES(NULL,%s,%s,%s,%s,%s,%s,%s',(numer_pytania,odp_tak,a,b,c,d,tresc,))
+    mysql.connection.commit()
+

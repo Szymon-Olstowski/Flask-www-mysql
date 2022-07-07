@@ -13,6 +13,7 @@ import sql
 from pushbullet import Pushbullet #install
 import subprocess as sp
 import bcrypt
+import pyotp,os
 app = Flask(__name__)
 # Zmień to na swój tajny klucz (może być dowolny, to dla dodatkowej ochrony)
 app.secret_key = 'testowany_klucz'
@@ -28,14 +29,39 @@ mysql = MySQL(app)
 def hello():
     return redirect(url_for('home'))
 # http://localhost:5000/pythonlogin/ - poniżej będzie nasza strona logowania, która będzie używać zarówno żądań GET, jak i POST
+@app.route('/token_reset',methods=['GET', 'POST'])
+def token_reset():
+    msg=""
+    if request.method == 'POST' and 'username' in request.form and 'password' in request.form:
+        username = request.form['username']
+        password = request.form['password']
+        account=sql.accountl(username)
+        cursor = mysql.connection.cursor()
+        cursor.execute('SELECT password FROM accounts WHERE username = %s ', (username,))
+        testp=cursor.fetchone()
+        cursor.execute('SELECT email FROM accounts WHERE username = %s ', (username,))
+        email=cursor.fetchone()
+       # Jeśli konto istnieje w tabeli kont w naszej bazie danych
+        if bcrypt.checkpw(password.encode("utf-8"),testp[0].encode("utf-8")):
+            session['loggedin'] = True
+            session['id'] = account[0]
+            session['username'] = account[1]
+            sql.reset_token(username,email)
+            msg="udano"
+            return render_template(f'qr_{username}.svg')
+        else:
+           msg="Nieodpowiednie hasło lub nzawa uzytkownika"
+           return render_template('token_reset.html', msg=msg)
+    return render_template('token_reset.html', msg=msg)
 @app.route('/pythonlogin/', methods=['GET', 'POST'])
 def login():
     msg=""
     # Sprawdź, czy istnieją żądania POST „nazwa użytkownika” i „hasło” (formularz przesłany przez użytkownika)
-    if request.method == 'POST' and 'username' in request.form and 'password' in request.form:
+    if request.method == 'POST' and 'username' in request.form and 'password' in request.form and 'kod' in request.form:
         # Create variables for easy access
         username = request.form['username']
         password = request.form['password']
+        kod = request.form['kod']
         account=sql.accountl(username)
         cursor = mysql.connection.cursor()
         cursor.execute('SELECT password FROM accounts WHERE username = %s ', (username,))
@@ -43,23 +69,30 @@ def login():
        # Jeśli konto istnieje w tabeli kont w naszej bazie danych
         if bcrypt.checkpw(password.encode("utf-8"),testp[0].encode("utf-8")):
             # Utwórz dane sesji, możemy uzyskać dostęp do tych danych na innych trasach
+            print("t1")
             session['loggedin'] = True
             session['id'] = account[0]
             session['username'] = account[1]
             sql.login_as(username)
             ip=request.remote_addr
             sql.login_ip(username,ip)
-            #powiadomienie
-            API_KEY = sql.api_key()
-            text = f"Zalogowano: {username} pomyślnie do serwisu z adresu ip: {ip} "
-            pb = Pushbullet(API_KEY)
-            push = pb.push_note("Logowanie", text)
-            #powiadomienie dla 2 użytkownika 
-            API_KEY = sql.api_key1()
-            text = f"Zalogowano: {username} pomyślnie do serwisu z adresu ip: {ip} "
-            pb = Pushbullet(API_KEY)
-            push = pb.push_note("Logowanie", text)
-            return redirect(url_for('home'))
+            token=sql.token(username)
+            totp = pyotp.TOTP(token[0])
+            if totp.now()==kod:
+                #powiadomienie
+                API_KEY = sql.api_key()
+                text = f"Zalogowano: {username} pomyślnie do serwisu z adresu ip: {ip} "
+                pb = Pushbullet(API_KEY)
+                push = pb.push_note("Logowanie", text)
+                #powiadomienie dla 2 użytkownika 
+                API_KEY = sql.api_key1()
+                text = f"Zalogowano: {username} pomyślnie do serwisu z adresu ip: {ip} "
+                pb = Pushbullet(API_KEY)
+                push = pb.push_note("Logowanie", text)
+                #usuwanie pliku qr przy pierwszym logowaniu
+                if os.path.isfile(f"templates/qr_{username}.svg"):
+                    os.remove(f"templates/qr_{username}.svg")
+                return redirect(url_for('home'))
         else:
             # Konto nie istnieje lub niepoprawna nazwa użytkownika/hasło
             msg = 'Błędna nazwa użytkownika/hasło!'
@@ -129,6 +162,7 @@ def register():
             #hasło zakodowane
             sql.konto_add(username, hashed, email,ip)
             msg = 'Konto zostało zarejestrowanie!'
+            return render_template(f'qr_{username}.svg')
     elif request.method == 'POST':
        # Formularz jest pusty... (brak danych POST)
         msg = 'Proszę wypełnić formularz!'
