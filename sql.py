@@ -132,11 +132,11 @@ def read_haslo():
     with open("haslo_konta.txt", "r") as f:
         lines = f.readlines()
         return lines[0].strip()
-def message_username():
-    USERNAME="szymonus03@wp.pl"
-    return USERNAME
+def message_email():
+    email="" #email z google
+    return email
 def message_token():
-    token=""
+    token=""#hasło google
     return token
 def api_key():
     API_KEY = ""#Weź kod z strony Pushbullet

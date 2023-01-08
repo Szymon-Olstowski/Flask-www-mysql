@@ -1,19 +1,16 @@
 from html.entities import html5
 from flask import Flask, render_template, request, redirect, url_for, session,jsonify #install
-from flask_mail_sendgrid import MailSendGrid
 from werkzeug.utils import secure_filename
-from flask_mail import Mail,Message #install code
 from werkzeug.datastructures import  FileStorage
 from flask_mysqldb import MySQL #install
-import MySQLdb.cursors #intsll
 import re
 from password_generator import PasswordGenerator #install
-import datetime
 import sql 
 from pushbullet import Pushbullet #install
 import subprocess as sp
 import bcrypt
 import pyotp,os
+import smtplib, ssl
 app = Flask(__name__)
 # Zmień to na swój tajny klucz (może być dowolny, to dla dodatkowej ochrony)
 app.secret_key = 'testowany_klucz'
@@ -139,14 +136,15 @@ def register():
         elif not username or not password or not email:
             msg = 'Proszę wypełnić formularz!'
         else:
-            app.config["MAIL_SENDGRID_API_KEY"] = sql.message_token()
-            mail = MailSendGrid(app)
-            with app.app_context():
-                msg = Message(subject="Nowe konto",
-                    sender=sql.message_username(),
-                    recipients=[f"<{email}>"], # użyje emaila wprowadzonego w formularzu
-                    html=f"Utworzono nowe konto na ten email. <br> Dane konta <br> Nazwa użytkownika: {username}<br> Hasło: {password}<br> Email: {email}",)
-            mail.send(msg)
+            port = 465
+            smtp_server_domain_name = "smtp.gmail.com"
+            sender_mail = sql.message_email()
+            password = sql.message_token()
+            ssl_context = ssl.create_default_context()
+            service = smtplib.SMTP_SSL(smtp_server_domain_name,port, context=ssl_context)
+            service.login(sender_mail, password) 
+            service.sendmail(sender_mail, email, f"Subject: Nowe konto\n Utworzono nowe konto na ten email. <br> Dane konta <br> Nazwa użytkownika: {username}<br> Hasło: {password}<br> Email: {email}")
+            service.quit()
             ip=request.remote_addr
             #powiadomienie
             API_KEY = sql.api_key()
@@ -336,13 +334,15 @@ def password_resert():
                 #hasło zakodowane
                 sql.haslo_change(username, hashed)
                 app.config["MAIL_SENDGRID_API_KEY"] = sql.message_token()
-                mail = MailSendGrid(app)
-                with app.app_context():
-                    msg = Message(subject="Hasło do konta",
-                      sender=sql.message_username(),
-                      recipients=[f"<{email}>"], # użyje emaila wprowadzonego w formularzu
-                      body=f"Zmieniono twóje hasło do konta {username}. Nowe hasło do konta: {password}",)
-                    mail.send(msg)
+                port = 465
+                smtp_server_domain_name = "smtp.gmail.com"
+                sender_mail = sql.message_email()
+                passwords = sql.message_token()
+                ssl_context = ssl.create_default_context()
+                service = smtplib.SMTP_SSL(smtp_server_domain_name,port, context=ssl_context)
+                service.login(sender_mail, passwords) 
+                service.sendmail(sender_mail, email, f"Subject: Hasło do konta\n Zmieniono twóje hasło do konta {username}. Nowe hasło do konta: {password}")
+                service.quit()
                 ip=request.remote_addr
                 #powiadomienie
                 API_KEY = sql.api_key()
@@ -696,14 +696,6 @@ def button_odp():
         pb = Pushbullet(API_KEY)
         push = pb.push_note("Pytania", text)
     return redirect(url_for('pytania'))
-
-"""
-def is_mucha():
-    if request.method == 'POST' and 
-            'numer_pytania' in request.form and 
-            "odp_tak" in request.form and "a" in request.form  and "b" in request.form and "c" in request.form and "d" in request.form and "tresc" in request.form and "wyczyc" in request.form:
-"""
-
 @app.route("/pytanie_add",methods=["GET", "POST"])
 def pytanie_add():
     msg=""
