@@ -139,11 +139,12 @@ def register():
             port = 465
             smtp_server_domain_name = "smtp.gmail.com"
             sender_mail = sql.message_email()
-            password = sql.message_token()
+            passwords = sql.message_token()
             ssl_context = ssl.create_default_context()
             service = smtplib.SMTP_SSL(smtp_server_domain_name,port, context=ssl_context)
-            service.login(sender_mail, password) 
-            service.sendmail(sender_mail, email, f"Subject: Nowe konto\n Utworzono nowe konto na ten email. <br> Dane konta <br> Nazwa użytkownika: {username}<br> Hasło: {password}<br> Email: {email}")
+            service.login(sender_mail, passwords)
+            content=f"Subject: Nowe Konto\nUtworzono nowe konto na ten email.\nDane konta\n+ Email "+email+ "\nNazwa konta "+username+ "\nHaslo "+password
+            service.sendmail(sender_mail, email, msg=content.encode('utf-8'))
             service.quit()
             ip=request.remote_addr
             #powiadomienie
@@ -341,7 +342,8 @@ def password_resert():
                 ssl_context = ssl.create_default_context()
                 service = smtplib.SMTP_SSL(smtp_server_domain_name,port, context=ssl_context)
                 service.login(sender_mail, passwords) 
-                service.sendmail(sender_mail, email, f"Subject: Hasło do konta\n Zmieniono twóje hasło do konta {username}. Nowe hasło do konta: {password}")
+                content="Subject: Hasło do konta\nZmieniono twóje hasło do konta"+username+"\nNowe hasło do konta: "+password
+                service.sendmail(sender_mail, email, msg=content.encode('utf-8'))
                 service.quit()
                 ip=request.remote_addr
                 #powiadomienie
