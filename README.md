@@ -1,4 +1,5 @@
 # Flask-www-mysql
+#Strona chwilowlo nie działa.
 Strona internetowa sklepu przy użyciu flask oraz bazy danych mysql
 
 Python od 3.10.0<x:
