@@ -4,7 +4,7 @@ from werkzeug.utils import secure_filename
 from werkzeug.datastructures import  FileStorage
 from flask_mysqldb import MySQL #install
 import re
-from password_generator import PasswordGenerator #install
+import password_generator
 import sql 
 from pushbullet import Pushbullet #install
 import subprocess as sp
