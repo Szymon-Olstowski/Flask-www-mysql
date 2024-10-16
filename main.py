@@ -1,393 +1,938 @@
-from flask import Flask, render_template, request, redirect, url_for
-import json
-import urllib.request
-from datetime import datetime, timedelta
-from urllib.request import urlopen
-from bs4 import BeautifulSoup
-import requests
-from geopy import Point, Nominatim
-import sqlite3, feedparser
+from html.entities import html5
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    session,
+    jsonify,
+)  # install
+from werkzeug.utils import secure_filename
+from werkzeug.datastructures import FileStorage
+from flask_mysqldb import MySQL  # install
+import re
+import password_generator  # install
+import sql
+from pushbullet import Pushbullet  # install
+import subprocess as sp
+import bcrypt
+import pyotp, os
+import smtplib, ssl
 
 app = Flask(__name__)
-
-
-class t:
-    def __init__(self, numer, numer_poj, cel, rozklad_odj, odj_akt, delay):
-        self.numer = numer
-        self.numer_poj = numer_poj
-        self.cel = cel
-        self.rozklad_odj = rozklad_odj
-        self.odj_akt = odj_akt
-        self.delay = delay
-
-
-@app.route("/odjazdy", methods=["GET", "POST"])
-async def odjazdy():
-    at: list[t] = []
-    con = sqlite3.connect("zkm.db")
-    cur = con.cursor()
-    if request.method == "POST":
-        if "przystanek" and "numer" in request.form:
-            przystanek = request.form["przystanek"]
-            numer = request.form["numer"]
-            cur.execute(
-                "SELECT * FROM Przystanki WHERE name = ? AND nr_przys= ?",
-                (
-                    przystanek,
-                    numer,
-                ),
-            )
-            dane = cur.fetchone()
-            if dane is None:
-                atz = t(
-                    numer="Brak takiego przystanku lub błędy numer przystanku, albo przystanek jest niedostępny",
-                    numer_poj="",
-                    cel="",
-                    rozklad_odj="",
-                    odj_akt="",
-                    delay="",
-                )
-                at.append(atz)
-            else:
-                x = requests.get(
-                    f"https://ckan2.multimediagdansk.pl/departures?stopId={dane[5]}"
-                )
-                odj = x.json()
-                for odja in odj["departures"]:
-                    rozklad_odj_iso = odja["theoreticalTime"]
-                    odj_akt_iso = odja["estimatedTime"]
-                    rozklad_odj_dt = datetime.fromisoformat(rozklad_odj_iso)
-                    odj_akt_dt = datetime.fromisoformat(odj_akt_iso)
-                    rozklad_odj_dt += timedelta(hours=2)
-                    odj_akt_dt += timedelta(hours=2)
-                    rozklad_odj_new = rozklad_odj_dt
-                    odj_akt_new = odj_akt_dt
-                    if odja["delayInSeconds"] is not None:
-                        d = odja["delayInSeconds"]
-                        minuty = d // 60
-                        sekundy = d % 60
-                        delay_str = f"{minuty} min {sekundy} sek"
-                    else:
-                        delay_str = "Brak danych"
-                    atz = t(
-                        numer=odja["routeShortName"],
-                        numer_poj=odja["vehicleCode"],
-                        cel=odja["headsign"],
-                        rozklad_odj=rozklad_odj_new.strftime("%d.%m.%y %H:%M:%S"),
-                        odj_akt=odj_akt_new.strftime("%d.%m.%y %H:%M:%S"),
-                        delay=delay_str,
-                    )
-                    at.append(atz)
-    return render_template("odjazd.html", at=at)
+# Zmień to na swój tajny klucz (może być dowolny, to dla dodatkowej ochrony)
+app.secret_key = "testowany_klucz"
+# Wprowadź poniżej szczegóły połączenia z bazą danych
+app.config["MYSQL_HOST"] = "localhost"
+app.config["MYSQL_USER"] = "root"
+app.config["MYSQL_PASSWORD"] = ""
+app.config["MYSQL_DB"] = "pythonlogin"
+# Zainicjuj MySQL
+salt = bcrypt.gensalt()
+mysql = MySQL(app)
 
 
 @app.route("/")
-async def test():  # informacja kanału
-    return render_template("test.html")
+def hello():
+    return redirect(url_for("home"))
 
 
-@app.route("/przystanek", methods=["GET", "POST"])
-async def przystanek():
-    con = sqlite3.connect("zkm.db")
-    cur = con.cursor()
-    if request.method == "POST":
-        if "przystanek" in request.form:
-            przystanek = request.form["przystanek"]
-            cur.execute("SELECT * FROM Przystanki WHERE name = ?", (przystanek,))
-            przys = cur.fetchall()
-            con.close()  # Don't forget to close the connection
-            return render_template("przystanek.html", przys=przys)
+# http://localhost:5000/pythonlogin/ - poniżej będzie nasza strona logowania, która będzie używać zarówno żądań GET, jak i POST
+@app.route("/token_reset", methods=["GET", "POST"])
+def token_reset():
+    msg = ""
+    if (
+        request.method == "POST"
+        and "username" in request.form
+        and "password" in request.form
+    ):
+        username = request.form["username"]
+        password = request.form["password"]
+        account = sql.accountl(username)
+        cursor = mysql.connection.cursor()
+        cursor.execute(
+            "SELECT password FROM accounts WHERE username = %s ", (username,)
+        )
+        testp = cursor.fetchone()
+        cursor.execute("SELECT email FROM accounts WHERE username = %s ", (username,))
+        email = cursor.fetchone()
+        # Jeśli konto istnieje w tabeli kont w naszej bazie danych
+        if bcrypt.checkpw(password.encode("utf-8"), testp[0].encode("utf-8")):
+            session["loggedin"] = True
+            session["id"] = account[0]
+            session["username"] = account[1]
+            sql.reset_token(username, email)
+            msg = "udano"
+            return render_template(f"qr_{username}.svg")
         else:
-            con.close()  # Don't forget to close the connection
-            return "Error: przystanek field not found in request form", 400
-    con.close()  # Don't forget to close the connection
-    return render_template("przystanek.html")
+            msg = "Nieodpowiednie hasło lub nzawa uzytkownika"
+            return render_template("token_reset.html", msg=msg)
+    return render_template("token_reset.html", msg=msg)
 
 
-class loak:
-    def __init__(self, lina, nr_pojazdu, cel, adres, lat, lon):
-        self.lina: str = lina
-        self.nr_pojazdu: str = nr_pojazdu
-        self.cel: str = cel
-        self.adres: str = adres
-        self.lat: str = lat
-        self.lon: str = lon
+@app.route("/pythonlogin/", methods=["GET", "POST"])
+def login():
+    msg = ""
+    # Sprawdź, czy istnieją żądania POST „nazwa użytkownika” i „hasło” (formularz przesłany przez użytkownika)
+    if (
+        request.method == "POST"
+        and "username" in request.form
+        and "password" in request.form
+        and "kod" in request.form
+    ):
+        # Create variables for easy access
+        username = request.form["username"]
+        password = request.form["password"]
+        kod = request.form["kod"]
+        account = sql.accountl(username)
+        cursor = mysql.connection.cursor()
+        cursor.execute(
+            "SELECT password FROM accounts WHERE username = %s ", (username,)
+        )
+        testp = cursor.fetchone()
+        # Jeśli konto istnieje w tabeli kont w naszej bazie danych
+        if bcrypt.checkpw(password.encode("utf-8"), testp[0].encode("utf-8")):
+            # Utwórz dane sesji, możemy uzyskać dostęp do tych danych na innych trasach
+            print("t1")
+            session["loggedin"] = True
+            session["id"] = account[0]
+            session["username"] = account[1]
+            sql.login_as(username)
+            ip = request.remote_addr
+            sql.login_ip(username, ip)
+            token = sql.token(username)
+            totp = pyotp.TOTP(token[0])
+            if totp.now() == kod:
+                # powiadomienie
+                API_KEY = sql.api_key()
+                text = f"Zalogowano: {username} pomyślnie do serwisu z adresu ip: {ip} "
+                pb = Pushbullet(API_KEY)
+                push = pb.push_note("Logowanie", text)
+                # powiadomienie dla 2 użytkownika
+                API_KEY = sql.api_key1()
+                text = f"Zalogowano: {username} pomyślnie do serwisu z adresu ip: {ip} "
+                pb = Pushbullet(API_KEY)
+                push = pb.push_note("Logowanie", text)
+                # usuwanie pliku qr przy pierwszym logowaniu
+                if os.path.isfile(f"templates/qr_{username}.svg"):
+                    os.remove(f"templates/qr_{username}.svg")
+                return redirect(url_for("home"))
+        else:
+            # Konto nie istnieje lub niepoprawna nazwa użytkownika/hasło
+            msg = "Błędna nazwa użytkownika/hasło!"
+    # Pokaż formularz logowania z wiadomością (jeśli istnieje)
+    return render_template("index.html", msg=msg)
 
 
-@app.route("/lok_autobusu", methods=["GET", "POST"])
-async def lok_autobusu():
-    autobus: list[loak] = []
-    if request.method == "POST" and "numer" in request.form:
-        r = requests.get("https://ckan2.multimediagdansk.pl/gpsPositions?v=2")
-        inf = r.json()
-        nr = int(request.form["numer"])
-        found = False
-        for jaz in inf["vehicles"]:
-            if str(nr) == jaz["routeShortName"]:
-                latitude = jaz["lat"]
-                longitude = jaz["lon"]
-                point = Point(latitude, longitude)
-                geocoder = Nominatim(user_agent="my-app")
-                address = geocoder.reverse(point)
-                az = loak(
-                    lina=jaz["routeShortName"],
-                    nr_pojazdu=jaz["vehicleCode"],
-                    cel=jaz["headsign"],
-                    adres=address[0],
-                    lat=latitude,
-                    lon=longitude,  # add lat and lon to the loak object
-                )
-                autobus.append(az)
-                found = True
+# http://localhost:5000/python/logout - to będzie strona wylogowania
+@app.route("/pythonlogin/logout")
+def logout():
+    # Usuń dane sesji, spowoduje to wylogowanie użytkownika
+    session.pop("loggedin", None)
+    session.pop("id", None)
+    session.pop("username", None)
+    ip = request.remote_addr
+    # powiadomienie
+    API_KEY = sql.api_key()
+    text = f"Wylogowamo użytkonika pomyślnie z serwisu z adresu ip: {ip} "
+    pb = Pushbullet(API_KEY)
+    push = pb.push_note("Wylogowano", text)
+    # powiadomienie dla 2 użytkownika
+    API_KEY = sql.api_key1()
+    text = f"Wylogowamo użytkonika pomyślnie z serwisu z adresu ip: {ip} "
+    pb = Pushbullet(API_KEY)
+    push = pb.push_note("Wylogowano", text)
+    # Redirect to login page
+    return redirect(url_for("login"))
 
-        if not found:
-            az = loak(
-                lina="Brak takiej lini albo nie kursuje w tym czasie",
-                nr_pojazdu=" ",
-                cel=" ",
-                adres=" ",
-                lat=" ",
-                lon=" ",
+
+@app.route("/pythonlogin/register", methods=["GET", "POST"])
+def register():
+    msg = ""
+    # Sprawdź, czy istnieją żądania POST „nazwa użytkownika” i „hasło” (formularz przesłany przez użytkownika)
+    if (
+        request.method == "POST"
+        and "username" in request.form
+        and "password" in request.form
+        and "email" in request.form
+    ):
+        # Create variables for easy access
+        username = request.form["username"]
+        password = request.form["password"]
+        email = request.form["email"]
+        # Sprawdź, czy konto istnieje przy użyciu MySQL
+        account = sql.spr_account(username)
+        # Jeśli konto istnieje, pokaż błędy i sprawdzanie poprawności
+        if account:
+            msg = "Konto już istnieje!"
+        elif not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            msg = "Invalid email address!"
+        elif not re.match(r"[A-Za-z0-9]+", username):
+            msg = "Nazwa użytkownika musi zawierać tylko znaki i cyfry!"
+        elif not username or not password or not email:
+            msg = "Proszę wypełnić formularz!"
+        else:
+            port = 465
+            smtp_server_domain_name = "smtp.gmail.com"
+            sender_mail = sql.message_email()
+            passwords = sql.message_token()
+            ssl_context = ssl.create_default_context()
+            service = smtplib.SMTP_SSL(
+                smtp_server_domain_name, port, context=ssl_context
             )
-            autobus.append(az)
-
-    return render_template("lok_autous.html", autobus=autobus)
-
-
-class loaks:
-    def __init__(self, lina, nr_pojazdu, cel, adres, lat, lon):
-        self.lina: str = lina
-        self.nr_pojazdu: str = nr_pojazdu
-        self.cel: str = cel
-        self.adres: str = adres
-        self.lat: str = lat
-        self.lon: str = lon
-
-
-@app.route("/lok_numer_autobusu", methods=["GET", "POST"])
-async def lok_numer_autobusu():
-    autobuss: list[loaks] = []
-    if request.method == "POST" and "numer" in request.form:
-        r = requests.get("https://ckan2.multimediagdansk.pl/gpsPositions?v=2")
-        inf = r.json()
-        nr = int(request.form["numer"])
-        found = False
-        for jaz in inf["vehicles"]:
-            if str(nr) == jaz["vehicleCode"]:
-                latitude = jaz["lat"]
-                longitude = jaz["lon"]
-                point = Point(latitude, longitude)
-                geocoder = Nominatim(user_agent="my-app")
-                address = geocoder.reverse(point)
-                az = loaks(
-                    lina=jaz["routeShortName"],
-                    nr_pojazdu=jaz["vehicleCode"],
-                    cel=jaz["headsign"],
-                    adres=address[0],
-                    lat=latitude,
-                    lon=longitude,  # add lat and lon to the loak object
-                )
-                autobuss.append(az)
-                found = True
-
-        if not found:
-            az = loaks(
-                lina="Brak takiego numeru pojazdu albo ten pojazd nie kursuje w tym czasie.",
-                nr_pojazdu=" ",
-                cel=" ",
-                adres=" ",
-                lat=" ",
-                lon=" ",
+            service.login(sender_mail, passwords)
+            content = (
+                f"Subject: Nowe Konto\nUtworzono nowe konto na ten email.\nDane konta\n+ Email "
+                + email
+                + "\nNazwa konta "
+                + username
+                + "\nHaslo "
+                + password
             )
-            autobuss.append(az)
-    return render_template("lok_numer_autous.html", autobuss=autobuss)
+            service.sendmail(sender_mail, email, msg=content.encode("utf-8"))
+            service.quit()
+            ip = request.remote_addr
+            # powiadomienie
+            API_KEY = sql.api_key()
+            text = f"Dodano konto {username} do serwisu z adrsu ip: {ip} "
+            pb = Pushbullet(API_KEY)
+            push = pb.push_note("Rejestracja", text)
+            # powiadomienie dla 2 użytkownika
+            API_KEY = sql.api_key1()
+            text = f"Dodano konto {username} do serwisu z adrsu ip: {ip} "
+            pb = Pushbullet(API_KEY)
+            push = pb.push_note("Rejestracja", text)
+            hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
+            # hasło zakodowane
+            sql.konto_add(username, hashed, email, ip)
+            msg = "Konto zostało zarejestrowanie!"
+            return render_template(f"qr_{username}.svg")
+    elif request.method == "POST":
+        # Formularz jest pusty... (brak danych POST)
+        msg = "Proszę wypełnić formularz!"
+    # Show registration form with message (if any)
+    return render_template("register.html", msg=msg)
 
 
-@app.route("/tabory", methods=["GET", "POST"])
-async def tabory():  # informacja filmu/live
-    test = []
-    if request.method == "POST" and "numer" in request.form:
-        num = request.form["numer"]
-        urt = "https://files.cloudgdansk.pl/d/otwarte-dane/ztm/baza-pojazdow.json?v=2"
-        url = requests.request("GET", urt)
-        licz = len(url.json()["results"])
-        for i in range(licz):
-            zm = url.json()["results"][i]["vehicleCode"]
-            if num == zm:
-                Numer_tab = num  # numer
-                operator = url.json()["results"][i]["carrirer"]  # operator/przewoźnik
-                rodzaj = url.json()["results"][i][
-                    "transportationType"
-                ]  # rodzaj pojazdu
-                marka = url.json()["results"][i]["brand"]  # marka
-                model = url.json()["results"][i]["model"]  # model
-                rok_prodkucji = url.json()["results"][i][
-                    "productionYear"
-                ]  # rok produkcji
-                podloga = url.json()["results"][i]["floorHeight"]  # wysokośc podłogi
-                typ = url.json()["results"][i]["vehicleCharacteristics"]  # typ pokazu
-                pod2kier = url.json()["results"][i]["bidirectional"]  # dwókierunkowy
-                historyczny = url.json()["results"][i]["historicVehicle"]  # historyczny
-                dlugosc = url.json()["results"][i]["length"]  # długośc -
-                siedzace = url.json()["results"][i]["seats"]  # miejsca siedzące
-                stojace = url.json()["results"][i]["standingPlaces"]  # miejsca stojące
-                uchwyt = url.json()["results"][i]["bikeHolders"]  # uchwyt na rowery
-                klimatyzacja = url.json()["results"][i][
-                    "airConditioning"
-                ]  # klimatyzacja
-                monitoring = url.json()["results"][i]["monitoring"]  # monitoring
-                monitor = url.json()["results"][i][
-                    "internalMonitor"
-                ]  # monitor wewnętrzny
-                przyklek = url.json()["results"][i]["kneelingMechanism"]  # przyklęk
-                rampa = url.json()["results"][i]["wheelchairsRamp"]  # rampa dla wózków
-                drzwi = url.json()["results"][i]["passengersDoors"]  # ilosć drzwi
-                usb = url.json()["results"][i]["usb"]  # usb
-                glos = url.json()["results"][i][
-                    "voiceAnnouncements"
-                ]  # zapowiedźi głosowe
-                aed = url.json()["results"][i]["aed"]  # aed
-                kasownik = url.json()["results"][i]["ticketMachine"]  # kasowniki
-                patron = url.json()["results"][i]["patron"]  # patron
-                test.append(Numer_tab)
-                test.append(operator)
-                test.append(rodzaj)
-                test.append(marka)
-                test.append(model)
-                test.append(rok_prodkucji)
-                test.append(podloga)
-                test.append(typ)
-                test.append(pod2kier)
-                test.append(historyczny)
-                test.append(dlugosc)
-                test.append(siedzace)
-                test.append(stojace)
-                test.append(uchwyt)
-                test.append(klimatyzacja)
-                test.append(monitoring)
-                test.append(monitor)
-                test.append(przyklek)
-                test.append(rampa)
-                test.append(drzwi)
-                test.append(usb)
-                test.append(glos)
-                test.append(aed)
-                test.append(kasownik)
-                test.append(patron)
-                break
-    return render_template("tabory.html", test=test)
+@app.route("/pythonlogin/home")
+def home():
+    msg = ""
+    # Sprawdź, czy użytkownik jest zalogowany
+    if "loggedin" in session:
+        return render_template("home.html", username=session["username"])
+    else:
+        # Użytkownik nie jest zalogowany przekierowanie do strony logowania
+        return redirect(url_for("login"))
 
 
-class Tablica:
-    def __init__(self, godziny, link):
-        self.godziny: str = godziny
-        self.link: str = link
+@app.route("/pythonlogin/profile")
+def profile():
+    msg = ""
+    # Sprawdź, czy użytkownik jest zalogowany
+    if "loggedin" in session:
+        account = sql.profile_account(session)
+
+        return render_template("profile.html", account=account)
+    # Użytkownik nie jest zalogowany przekierowanie do strony logowania
+    else:
+        # Użytkownik nie jest zalogowany przekierowanie do strony logowania
+        return redirect(url_for("login"))
 
 
-@app.route("/rozklad", methods=["GET", "POST"])
-async def rozklad():  # informacja filmu/live
-    tab: list[Tablica] = []
-    if request.method == "POST" and "link" in request.form:
-        link = request.form["link"]
-        page = requests.get(link)
-        soup = BeautifulSoup(page.text, "html.parser")
-        quote_elements = soup.find_all("div", class_="container")
-        for quote_element in quote_elements:
-            text = quote_element.find_all("div", class_="row")
-            texty = text
-        for test in texty:
-            con = test.find("div", class_="col", id="content")
-        for te in con:
-            te = con.find_all("div", class_="departures")
-        for ta in te:
-            ty = ta.find_all("div", class_="departures-set")
-        for przystanek in te:  # wyszukiwanie przysatnku z linku oraz kierunek
-            przy = przystanek.find("div")
-            licz = len(przy.text)
-            liczw = licz - 20
-            tekstowa = przy.text[0:liczw]
-            print(tekstowa)
-            for meh in ty:
-                bober = meh.find_all("div", class_="m")
-            tagi = []
-            for bobers in bober:
-                tag = bobers.a
-                tagi.append(tag)
-            for tags in tagi:
-                wyn = tags.get("aria-label")[
-                    0:5
-                ]  # wyciągniecie z tekstu godziny odjazdu
-                link_href = tags.get("href")  # pobierz link z atrybutu href
-                tab.append(
-                    Tablica(
-                        godziny=wyn, link=f"https://ztm.gda.pl/rozklady/{link_href}"
+@app.route("/uploader", methods=["GET", "POST"])
+def uploader():
+    if request.method == "POST":
+        f = request.files["file"]
+        f.save(secure_filename(f.filename))
+        ip = request.remote_addr
+        # powiadomienie
+        API_KEY = sql.api_key()
+        text = f"Dodano plik do serwisu z adrsu ip: {ip} "
+        pb = Pushbullet(API_KEY)
+        push = pb.push_note("Pliki", text)
+        return render_template("home.html")
+
+
+@app.route("/pythonlogin/haslo", methods=["GET", "POST"])
+def haslo():
+    msg = ""
+    if "loggedin" in session:
+        if (
+            request.method == "POST"
+            and "username" in request.form
+            and "password" in request.form
+        ):
+            # Create variables for easy access
+            username = request.form["username"]
+            password = request.form["password"]
+            # Sprawdź, czy konto istnieje przy użyciu MySQL
+            account = sql.spr_account(username)
+            if account:
+                hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
+                # hasło zakodowane
+                sql.haslo_change(username, hashed)
+                msg = "Hasło zostało zmienione"
+                ip = request.remote_addr
+                # powiadomienie
+                API_KEY = sql.api_key()
+                text = (
+                    f"Zmieniono hasło dla konta {username} do serwisu z adrsu ip: {ip} "
+                )
+                pb = Pushbullet(API_KEY)
+                push = pb.push_note("Zmiana hasła", text)
+                # powiadomienie dla 2 użytkownika
+                API_KEY = sql.api_key1()
+                text = (
+                    f"Zmieniono hasło dla konta {username} do serwisu z adrsu ip: {ip} "
+                )
+                pb = Pushbullet(API_KEY)
+                push = pb.push_note("Zmiana hasła", text)
+        elif request.method == "POST":
+            # Formularz jest pusty... (brak danych POST)
+            msg = "Proszę wypełnić formularz!"
+    else:
+        # Użytkownik nie jest zalogowany przekierowanie do strony logowania
+        return redirect(url_for("login"))
+    # Show registration form with message (if any)
+    return render_template("haslo.html", msg=msg)
+
+
+@app.route("/pythonlogin/sklep")
+def sklep():
+    if "loggedin" in session:
+        sklepDetalis = sql.sklep()
+        return render_template("sklep.html", sklepDetalis=sklepDetalis)
+    else:
+        # Użytkownik nie jest zalogowany przekierowanie do strony logowania
+        return redirect(url_for("login"))
+
+
+@app.route("/sklep_a", methods=["GET", "POST"])
+def sklep_a():
+    msg = ""
+    if "loggedin" in session:
+        if (
+            request.method == "POST"
+            and "indenfikator" in request.form
+            and "ilosc" in request.form
+        ):
+            indenfikator = request.form["indenfikator"]
+            ilosc = request.form["ilosc"]
+            spr = sql.items_inf(indenfikator)
+            if spr:
+                cursor = mysql.connection.cursor()
+                account = sql.account(session)
+                cursor.execute(
+                    "SELECT * FROM sklep where indenfikator= %s", (indenfikator,)
+                )
+                cena = cursor.fetchone()
+                print(cena[5])
+                cena_cal = cena[5] * int(ilosc)
+                cursor.execute(
+                    "SELECT nazwa_produktu FROM sklep where indenfikator= %s",
+                    (indenfikator,),
+                )
+                nazwa = cursor.fetchone()
+                # doawanie produtu do bazy danych
+                cursor.execute(
+                    "INSERT INTO items VALUES (NULL, %s, %s,%s,%s,%s)",
+                    (indenfikator, ilosc, cena_cal, account[1], nazwa),
+                )
+                mysql.connection.commit()
+                akt = account[7] + cena_cal
+                sql.money(akt, account[1])
+            else:
+                return redirect(url_for("sklep"))
+    else:
+        return redirect(url_for("login"))
+    return redirect(url_for("koszyk"))
+
+
+@app.route("/pythonlogin/data", methods=["GET", "POST"])
+def data():
+    msg = ""
+    if "loggedin" in session:
+        account = sql.account(session)
+        if account[8] == "admin":
+            if (
+                request.method == "POST"
+                and "nazwa_produktu" in request.form
+                and "producent" in request.form
+            ):
+                # Utwarza nowe wartości do sklepu
+                nazwa_produktu = request.form["nazwa_produktu"]
+                producent = request.form["producent"]
+                kategoria = request.form["kategoria"]
+                typ = request.form["typ"]
+                cena = request.form["cena"]
+                indenfikator = request.form["indenfikator"]
+                data = sql.data_spr(nazwa_produktu)
+                data1 = sql.data_spr1(indenfikator)
+                if data == None and data1 == None:
+                    sql.data(
+                        nazwa_produktu, producent, kategoria, typ, cena, indenfikator
                     )
-                )  # dodaj link do Tablica
-    return render_template("rozklad.html", tab=tab)
+                    msg = "Dodano produkt do sklepu"
+                    ip = request.remote_addr
+                    # powiadomienie
+                    API_KEY = sql.api_key()
+                    text = f"Dodano produkt {nazwa_produktu} do sklepu z adrsu ip: {ip} przez {account[1]} "
+                    pb = Pushbullet(API_KEY)
+                    push = pb.push_note("Sklep", text)
+                    # powiadomienie dla 2 użytkownika
+                    API_KEY = sql.api_key1()
+                    text = f"Dodano produkt {nazwa_produktu} do sklepu z adrsu ip: {ip} przez {account[1]} "
+                    pb = Pushbullet(API_KEY)
+                    push = pb.push_note("Sklep", text)
+                else:
+                    if data != None and data1 != None:
+                        msg = "Nazwa proddukru i indenfikator istnieją się w sklepie"
+                    if data:
+                        msg = "Ta nazwa produktu istenieje w sklepie"
+                    if data1:
+                        msg = "Ten indenfikator istnieje w sklepie"
+            elif request.method == "POST":
+                # Formularz jest pusty... (brak danych POST)
+                msg = "Proszę wypełnić formularz!"
+        else:
+            msg = "Nie masz dostępu do dowawania produktów"
+    else:
+        # Użytkownik nie jest zalogowany przekierowanie do strony logowania
+        return redirect(url_for("login"))
+    # Show registration form with message (if any)
+    return render_template("data.html", msg=msg)
 
 
-@app.route("/bus_stops", methods=["GET", "POST"])
-def bus_stops():
-    bus_stops = []
+@app.route("/pythonlogin/password_resert", methods=["GET", "POST"])
+def password_resert():
+    msg = ""
+    if request.method == "POST" and "username" in request.form and "email":
+        username = request.form["username"]
+        email = request.form["email"]
+        # Sprawdź, czy konto istnieje przy użyciu MySQL
+        account = sql.spr_account(username)
+        email_check = sql.spr_email(username, email)
+        if account:
+            if email_check:
+                password = password_generator.generate(length=16)
+                hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
+                # hasło zakodowane
+                sql.haslo_change(username, hashed)
+                app.config["MAIL_SENDGRID_API_KEY"] = sql.message_token()
+                port = 465
+                smtp_server_domain_name = "smtp.gmail.com"
+                sender_mail = sql.message_email()
+                passwords = sql.message_token()
+                ssl_context = ssl.create_default_context()
+                service = smtplib.SMTP_SSL(
+                    smtp_server_domain_name, port, context=ssl_context
+                )
+                service.login(sender_mail, passwords)
+                content = (
+                    "Subject: Hasło do konta\nZmieniono twóje hasło do konta "
+                    + username
+                    + "\nNowe hasło do konta: "
+                    + password
+                )
+                service.sendmail(sender_mail, email, msg=content.encode("utf-8"))
+                service.quit()
+                ip = request.remote_addr
+                # powiadomienie
+                API_KEY = sql.api_key()
+                text = (
+                    f"Zmieniono hasło dla konta {username} do serwisu z adrsu ip: {ip} "
+                )
+                pb = Pushbullet(API_KEY)
+                push = pb.push_note("Zmiana hasła", text)
+                msg = "Ustawiono hasło na:  ", password
+                # powiadomienie dla 2 użytkownika
+                API_KEY = sql.api_key1()
+                text = (
+                    f"Zmieniono hasło dla konta {username} do serwisu z adrsu ip: {ip} "
+                )
+                pb = Pushbullet(API_KEY)
+                push = pb.push_note("Zmiana hasła", text)
+                msg = "Ustawiono hasło na:  ", password
+            else:
+                msg = "Nieprawidłowy adres email"
+        else:
+            msg = "Nie ma takiego konta"
+    else:
+        "Proszę wypełnić folmurarz"
+    # Show registration form with message (if any)
+    return render_template("password_resert.html", msg=msg)
+
+
+@app.route("/pythonlogin/koszyk", methods=["GET", "POST"])
+def koszyk():
+    if "loggedin" in session:
+        cursor = mysql.connection.cursor()
+        account = sql.account(session)
+        sklep = cursor.execute("SELECT * FROM items WHERE konto=%s", (account[1],))
+        if sklep > 0:
+            sklepDetalis = cursor.fetchall()
+        else:
+            return redirect(url_for("sklep"))
+        return render_template(
+            "koszyk.html", sklepDetalis=sklepDetalis, account=account
+        )
+
+
+@app.route("/items_change", methods=["GET", "POST"])
+def items_change():
+    if "loggedin" in session:
+        if (
+            request.method == "POST"
+            and "indenfikator" in request.form
+            and "id" in request.form
+            and "ilosc" in request.form
+            and "usun"
+        ):
+            indenfikator = request.form["indenfikator"]
+            id = request.form["id"]
+            ilosc = request.form["ilosc"]
+            usun = request.form["usun"]
+            cursor = mysql.connection.cursor()
+            spr = sql.items_inf(indenfikator)
+            if spr:
+                account = sql.account(session)
+                cena = sql.cena_pr(indenfikator)
+                cursor.execute("SELECT * FROM items where id=%s", (id))
+                t = cursor.fetchone()
+                if t:
+                    t_b = int(t[2])
+                    if usun == "TAK":
+                        akt = int(account[7]) - int(t[3])
+                        cursor = mysql.connection.cursor()
+                        sql.money(akt, account[1])
+                        cursor.execute("DELETE FROM items where id=%s", (id,))
+                        mysql.connection.commit()
+                    else:
+                        if t_b < int(ilosc):
+                            cena_cal = cena[0] * int(ilosc)
+                            print(cena_cal)
+                            sql.koszyk_cena(cena_cal, id)
+                            sql.koszyk_ilosc(ilosc, id)
+                            test = cena_cal - int(t[3])
+                            akt = int(account[7]) + test
+                            sql.money(akt, account[1])
+                        if t_b > int(ilosc):
+                            cena_cal = cena[0] * int(ilosc)
+                            sql.koszyk_cena(cena_cal, id)
+                            sql.koszyk_ilosc(ilosc, id)
+                            test = int(t[3]) - cena_cal
+                            akt = int(account[7]) - test
+                            sql.money(akt, account[1])
+            else:
+                return redirect(url_for("koszyk"))
+    else:
+        return redirect(url_for("login"))
+    return redirect(url_for("koszyk"))
+
+
+@app.route("/admin", methods=["GET", "POST"])
+def admin():
+    msg = ""
+    if "loggedin" in session:
+        account = sql.account(session)
+        if account[8] == "admin":
+            msg = "Witaj"
+        else:
+            return redirect(url_for("home"))
+    else:
+        return redirect(url_for("login"))
+    return render_template("admin.html", msg=msg, username=session["username"])
+
+
+@app.route("/permisje", methods=["GET", "POST"])
+def permisje():
+    msg = ""
+    if "loggedin" in session:
+        account = sql.account(session)
+        if account[8] == "admin":
+            if (
+                request.method == "POST"
+                and "username" in request.form
+                and "permisje" in request.form
+            ):
+                username = request.form["username"]
+                permisje = request.form["permisje"]
+                test = sql.spr_account(username)
+                if test:
+                    sql.permisje(permisje, username)
+                    ip = request.remote_addr
+                    # powiadomienie
+                    API_KEY = sql.api_key()
+                    text = f"Dla konta {username} zmieniono permisje z adresu ip: {ip} "
+                    pb = Pushbullet(API_KEY)
+                    push = pb.push_note("Permisje", text)
+                    msg = "Zmiana permisji została wykonana"
+                    # powiadomienie dla w 2 użytkownika
+                    API_KEY = sql.api_key1()
+                    text = f"Dla konta {username} zmieniono permisje z adresu ip: {ip} "
+                    pb = Pushbullet(API_KEY)
+                    push = pb.push_note("Permisje", text)
+                    msg = "Zmiana permisji została wykonana"
+                else:
+                    msg = "Nie ma takiego użytkownika"
+            else:
+                msg = "Proszę wypełnić formularz!"
+        else:
+            return redirect(url_for("home"))
+    else:
+        return redirect(url_for("login"))
+    return render_template("permisje.html", msg=msg)
+
+
+@app.route("/user")
+def user():
+    if "loggedin" in session:
+        account = sql.account(session)
+        if account[8] == "admin":
+            users = sql.user()
+            return render_template("users.html", users=users)
+        else:
+            return redirect(url_for("home"))
+    else:
+        # Użytkownik nie jest zalogowany przekierowanie do strony logowania
+        return redirect(url_for("login"))
+
+
+@app.route("/koszyk_user")
+def koszyk_user():
+    msg = ""
+    if "loggedin" in session:
+        account = sql.account(session)
+        if account[8] == "admin":
+            users = sql.user1()
+            if users == None:
+                msg = "Brak przediotów w koszyku"
+            else:
+                msg = "Działa"
+                return render_template("koszyk_users.html", users=users, msg=msg)
+        else:
+            return redirect(url_for("home"))
+    else:
+        # Użytkownik nie jest zalogowany przekierowanie do strony logowania
+        return redirect(url_for("login"))
+
+
+@app.route("/sklep_edit", methods=["GET", "POST"])
+def sklep_edit():
+    if "loggedin" in session:
+        account = sql.account(session)
+        if account[8] == "admin":
+            if (
+                request.method == "POST"
+                and "indenfikator" in request.form
+                and "usun" in request.form
+                and "cena_t" in request.form
+            ):
+                indenfikator = request.form["indenfikator"]
+                usun = request.form["usun"]
+                cena_t = request.form["cena_t"]
+                cursor = mysql.connection.cursor()
+                spr = sql.items_inf(indenfikator)
+                ip = request.remote_addr
+                if spr:
+                    account = sql.account(session)
+                    cena = sql.cena_pr(indenfikator)
+                    cursor.execute(
+                        "SELECT * FROM items where indenfikator=%s", (indenfikator,)
+                    )
+                    t = cursor.fetchall()
+                    if t:
+                        if usun == "TAK":
+                            for t in t:
+                                print(t)
+                                cursor.execute(
+                                    "SELECT * FROM accounts where username=%s", (t[4],)
+                                )
+                                konto = cursor.fetchone()
+                                akt = int(konto[7]) - int(t[3])
+                                cursor = mysql.connection.cursor()
+                                sql.money(akt, konto[1])
+                                cursor.execute(
+                                    "DELETE FROM items where indenfikator=%s",
+                                    (indenfikator,),
+                                )
+                                mysql.connection.commit()
+                            cursor.execute(
+                                "DELETE FROM Sklep WHERE indenfikator=%s",
+                                (indenfikator,),
+                            )
+                            mysql.connection.commit()
+                            # powiadomienie
+                            API_KEY = sql.api_key()
+                            text = f"Admin {account[1]} usunął produkt z sklepu z adresu ip: {ip} "
+                            pb = Pushbullet(API_KEY)
+                            push = pb.push_note("Sklep", text)
+                            # powiadomienie dla 2 użytkownika
+                            API_KEY = sql.api_key1()
+                            text = f"Admin {account[1]} usunął produkt z sklepu z adresu ip: {ip} "
+                            pb = Pushbullet(API_KEY)
+                            push = pb.push_note("Sklep", text)
+                        else:
+                            if cena[0] < int(cena_t):
+                                for t in t:
+                                    cursor.execute(
+                                        "SELECT * FROM accounts where username=%s",
+                                        (t[4],),
+                                    )
+                                    konto = cursor.fetchone()
+                                    cena_cal = int(cena_t) * t[2]
+                                    print(cena_cal)
+                                    sql.koszyk_cena_2(cena_cal, konto[1])
+                                    test = cena_cal - int(t[3])
+                                    print(test)
+                                    akt = int(konto[7]) + test
+                                    sql.money(akt, konto[1])
+                                sql.sklep_update(int(cena_t), indenfikator)
+                                # powiadomienie
+                                API_KEY = sql.api_key()
+                                text = f"Admin {account[1]} zwiększył cenę produktu do sklepu z adresu ip: {ip} "
+                                pb = Pushbullet(API_KEY)
+                                push = pb.push_note("Sklep", text)
+                                # powiadomienie dla 2 użytkownika
+                                API_KEY = sql.api_key1()
+                                text = f"Admin {account[1]} zwiększył cenę produktu do sklepu z adresu ip: {ip} "
+                                pb = Pushbullet(API_KEY)
+                                push = pb.push_note("Sklep", text)
+                            if cena[0] > int(cena_t):
+                                for t in t:
+                                    cursor.execute(
+                                        "SELECT * FROM accounts where username=%s",
+                                        (t[4],),
+                                    )
+                                    konto = cursor.fetchone()
+                                    cena_cal = int(cena_t) * t[2]
+                                    print(cena_cal)
+                                    sql.koszyk_cena_2(cena_cal, konto[1])
+                                    test = int(t[3]) - cena_cal
+                                    print(test)
+                                    akt = int(konto[7]) - test
+                                    sql.money(akt, konto[1])
+                                sql.sklep_update(int(cena_t), indenfikator)
+                                # powiadomienie
+                                API_KEY = sql.api_key()
+                                text = f"Admin {account[1]} zmiejszył cenę produktu do sklepu z adresu ip: {ip} "
+                                pb = Pushbullet(API_KEY)
+                                push = pb.push_note("Sklep", text)
+                                # powiadomienie dla 2 użytkownika
+                                API_KEY = sql.api_key()
+                                text = f"Admin {account[1]} zmiejszył cenę produktu do sklepu z adresu ip: {ip} "
+                                pb = Pushbullet(API_KEY)
+                                push = pb.push_note("Sklep", text)
+                    else:
+                        if usun == "TAK":
+                            cursor.execute(
+                                "DELETE FROM Sklep WHERE indenfikator=%s",
+                                (indenfikator,),
+                            )
+                            mysql.connection.commit()
+                            # powiadomienie
+                            API_KEY = sql.api_key()
+                            text = f"Admin {account[1]} usunął produkt z sklepu z adresu ip: {ip} "
+                            pb = Pushbullet(API_KEY)
+                            push = pb.push_note("Sklep", text)
+                            # powiadomienie dla 2 użytkownika
+                            API_KEY = sql.api_key1()
+                            text = f"Admin {account[1]} usunął produkt z sklepu z adresu ip: {ip} "
+                            pb = Pushbullet(API_KEY)
+                            push = pb.push_note("Sklep", text)
+                        else:
+                            if cena[0] < int(cena_t):
+                                sql.sklep_update(int(cena_t), indenfikator)
+                                # powiadomienie
+                                API_KEY = sql.api_key()
+                                text = f"Admin {account[1]} zwiększył cenę produktu do sklepu z adresu ip: {ip} "
+                                pb = Pushbullet(API_KEY)
+                                push = pb.push_note("Sklep", text)
+                                # powiadomienie dla 2 użytkownika
+                                API_KEY = sql.api_key1()
+                                text = f"Admin {account[1]} zwiększył cenę produktu do sklepu z adresu ip: {ip} "
+                                pb = Pushbullet(API_KEY)
+                                push = pb.push_note("Sklep", text)
+                            if cena[0] > int(cena_t):
+                                sql.sklep_update(int(cena_t), indenfikator)
+                                # powiadomienie
+                                API_KEY = sql.api_key()
+                                text = f"Admin {account[1]} zmniejszył cenę produktu do sklepu z adresu ip: {ip} "
+                                pb = Pushbullet(API_KEY)
+                                push = pb.push_note("Sklep", text)
+                                # powiadomienie dla 2 użytkownika
+                                API_KEY = sql.api_key1()
+                                text = f"Admin {account[1]} zmniejszył cenę produktu do sklepu z adresu ip: {ip} "
+                                pb = Pushbullet(API_KEY)
+                                push = pb.push_note("Sklep", text)
+            else:
+                return redirect(url_for("koszyk_user"))
+        else:
+            return redirect(url_for("home"))
+    else:
+        return redirect(url_for("login"))
+    return redirect(url_for("koszyk_user"))
+
+
+@app.route("/pytania")
+def pytania():
+    if "loggedin" in session:
+        account = sql.account(session)
+        ilosc_pytania = sql.spr_ilosc()
+        ilosc_spr_username = sql.spr_ilosc_username(account[1])
+        if ilosc_spr_username[0] == ilosc_pytania[0]:
+            return redirect(url_for("odp"))
+        else:
+            pytanie = sql.pytania()
+    else:
+        return redirect(url_for("login"))
+    return render_template("pytania.html", pytanie=pytanie)
+
+
+@app.route("/test", methods=["GET", "POST"])
+def test():
+    if request.method == "POST" and "numer":
+        ilosc_spr = sql.spr_ilosc()
+        account = sql.account(session)
+        id = request.form["numer"]
+        mucha = request.form.getlist("mycheckbox")
+        test = sql.pytania_pr(id)
+        if test:
+            if mucha[0] == test[2]:
+                wmg = "Tak"
+                ilosc = account[10] + 1
+                sql.add_wynik(account[1], id, wmg, mucha[0])
+                sql.wynik(ilosc, account[1])
+            if mucha[0] != test[2]:
+                wmg = "Nie"
+                ilosc = account[10]
+                sql.add_wynik(account[1], id, wmg, mucha[0])
+                sql.wynik(ilosc, account[1])
+        if ilosc_spr[0] == ilosc:
+            return redirect(url_for("odp"))
+    else:
+        return redirect(url_for("login"))
+    return redirect(url_for("pytania"))
+
+
+@app.route("/odp")
+def odp():
+    if "loggedin" in session:
+        account = sql.account(session)
+        pytanie = sql.pytania()
+        ceck = sql.odp(account[1])
+        ilosc = sql.spr_ilosc()
+        suma = round(account[10] / ilosc[0], 2) * 100
+        if suma == 1.0:
+            suma = 100
+    else:
+        return redirect(url_for("login"))
+    return render_template(
+        "odp.html", pytanie=pytanie, ceck=ceck, suma=suma, ilosc=ilosc, account=account
+    )
+
+
+@app.route("/button_odp", methods=["GET", "POST"])
+def button_odp():
     if request.method == "POST":
-        line_number = request.form["line_number"]
-        url = f"https://ztm.gda.pl/rozklady/linia-{line_number}.html"
-        response = requests.get(url)
-        soup = BeautifulSoup(response.content, "html.parser")
-        table = soup.find("table", {"role": "presentation"})
+        account = sql.account(session)
+        cursor = mysql.connection.cursor()
+        cursor.execute("DELETE FROM odp WHERE username=%s", (account[1],))
+        mysql.connection.commit()
+        ilosc = 0
+        sql.wynik(ilosc, account[1])
+        ip = request.remote_addr
+        # powiadomienie
+        API_KEY = sql.api_key()
+        text = f"Użytkownik {account[1]} wyczysćił własne odpowiedżi z adresu ip: {ip} "
+        pb = Pushbullet(API_KEY)
+        push = pb.push_note("Pytania", text)
+        # powiadomienie dla 2 użytkownika
+        API_KEY = sql.api_key1()
+        text = f"Użytkownik {account[1]} wyczysćił własne odpowiedżi z adresu ip: {ip}"
+        pb = Pushbullet(API_KEY)
+        push = pb.push_note("Pytania", text)
+    return redirect(url_for("pytania"))
 
-        if table:
-            for row in table.find_all("tr")[1:]:  # skip the header row
-                for cell in row.find_all("td"):
-                    street = cell.find("div", {"class": "route_street"})
-                    street_name = street.text.strip() if street else ""
-                    for link in cell.find_all("a"):
-                        bus_stop = link.text.strip()
-                        href = link.get("href")
-                        full_link = f"https://ztm.gda.pl/rozklady/{href}"
-                        bus_stops.append(
-                            {
-                                "street": street_name,
-                                "bus_stop": bus_stop,
-                                "link": full_link,
-                            }
-                        )
+
+@app.route("/pytanie_add", methods=["GET", "POST"])
+def pytanie_add():
+    msg = ""
+    if "loggedin" in session:
+        account = sql.account(session)
+        print(account[8])
+        if account[8] == "admin":
+            print("mucha13")
+            print(request.form)
+            if (
+                request.method == "POST"
+                and "numer_pytania" in request.form
+                and "odp_tak" in request.form
+                and "a" in request.form
+                and "b" in request.form
+                and "c" in request.form
+                and "d" in request.form
+                and "tresc" in request.form
+                and "wyczyc" in request.form
+            ):
+                print("mudewf4")
+                numer_pytania = request.form["numer_pytania"]
+                odp_tak = request.form["odp_tak"]
+                a = request.form["a"]
+                b = request.form["b"]
+                c = request.form["c"]
+                d = request.form["d"]
+                tresc = request.form["tresc"]
+                wyczyc = request.form["wyczyc"]
+                print(numer_pytania, odp_tak, a, b, c, d, tresc, wyczyc)
+                ip = request.remote_addr
+                if wyczyc == "Tak":
+                    print("Tak")
+                    cursor = mysql.connection.cursor()
+                    cursor.execute("DELETE FROM odp")
+                    mysql.connection.commit()
+                    ilosc = 0
+                    cursor.execute("UPDATE account SET odp_yes=%s", (ilosc,))
+                    mysql.connection.commit()
+                    sql.pytania_add(numer_pytania, odp_tak, a, b, c, d, tresc)
+                    # powiadomienie
+                    API_KEY = sql.api_key()
+                    text = f"Administrator {account[1]} wyczysćił wszytkie pytania dodawając nowe pytania z adresu ip: {ip} "
+                    pb = Pushbullet(API_KEY)
+                    push = pb.push_note("Pytania", text)
+                    # powiadomienie dla 2 użytkownika
+                    API_KEY = sql.api_key1()
+                    text = f"Administrator {account[1]} wyczysćił wszytkie pytania dodawając nowe pytania z adresu ip: {ip} "
+                    pb = Pushbullet(API_KEY)
+                    push = pb.push_note("Pytania", text)
+                    msg = "dodano pytanie"
+                else:
+                    print("nie")
+                    pytanie = sql.pytania_pr(numer_pytania)
+                    print(pytanie)
+                    if pytanie:
+                        msg = "Podany numer pytania jest zajęty"
+                    else:
+                        sql.pytania_add(numer_pytania, odp_tak, a, b, c, d, tresc)
+                        # powiadomienie
+                        API_KEY = sql.api_key()
+                        text = f"Administrator {account[1]} dodał nowe pytanie z adresu ip: {ip} "
+                        pb = Pushbullet(API_KEY)
+                        push = pb.push_note("Pytania", text)
+                        # powiadomienie dla 2 użytkownika
+                        API_KEY = sql.api_key1()
+                        text = f"Administrator {account[1]} dodawł nowe pytania z adresu ip: {ip} "
+                        pb = Pushbullet(API_KEY)
+                        push = pb.push_note("Pytania", text)
+                        msg = "dodano pytanie"
         else:
-            bus_stops.append(
-                {
-                    "street": "Error",
-                    "bus_stop": "No bus stops found for this line.",
-                    "link": "",
-                }
-            )
-
-    return render_template("bus_stops.html", bus_stops=bus_stops)
+            return redirect(url_for("home"))
+    else:
+        return redirect(url_for("login"))
+    return render_template("pytanie_add.html", msg=msg)
 
 
-from bs4 import BeautifulSoup
-import requests
-
-
-@app.route("/odjazy_przys", methods=["GET", "POST"])
-async def odjazdy_przys():
-    if request.method == "POST" and "link" in request.form:
-        link = request.form["link"]
-        page = requests.get(link)
-        soup = BeautifulSoup(page.text, "html.parser")
-        table = soup.find("table", {"class": "kurstab", "role": "presentation"})
-
-        if table:
-            rows = table.find_all("tr")
-            data = []
-            for row in rows[1:]:  # skip the header row
-                cols = row.find_all("td")
-                cols = [col.text.strip() for col in cols]
-                data.append(cols)
-            return render_template("odczyt_tabeli.html", data=data)
-        else:
-            return "Tabela nie znaleziona"
-    return render_template("odczyt_tabeli.html")
-
-
+# zmień adres ip odowiedni dla swojej sieći
 if __name__ == "__main__":
-    app.run(host="192.168.0.185")  # wprowadz adres ip komputera
+    app.run(host="192.168.0.185")
