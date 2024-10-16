@@ -1,0 +1,23 @@
+{% extends 'layout.html' %}
+
+{% block title %}Users{% endblock %}
+{% block content %}
+<h2>Users</h2>
+<!-- START free4u.pl -->
+<script type="text/JavaScript" src="http://www.free4u.pl/data_godzina.php?co=data"></script>
+<!-- STOP free4u.pl -->
+<!-- START free4u.pl -->
+<script type="text/JavaScript" src="http://www.free4u.pl/data_godzina.php?co=godzina"></script>
+<!-- STOP free4u.pl -->
+<table border="1">
+    <tr>
+        <td>Nazwa użytkownika</td><td>Hasło</td><td>Email</td><td>Create as</td><td>Login as</td><td>Zmiana hasła</td><td>Stan koszyka</td><td>Permisje</td><td>Ostatnie logowanie ip</td>
+    </tr>
+    
+    {% for user in users %}
+    <tr>
+        <td>{{user[1]}}</td><td>{{user[2]}}</td><td>{{user[3]}}</td><td>{{user[4]}}</td><td>{{user[5]}}</td><td>{{user[6]}}</td><td>{{user[7]}}</td><td>{{user[8]}}<td>{{user[9]}}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

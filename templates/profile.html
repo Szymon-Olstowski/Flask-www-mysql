@@ -1,0 +1,49 @@
+{% extends 'layout.html' %}
+
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<h2>Strona profilowa</h2>
+<!-- START free4u.pl -->
+<script type="text/JavaScript" src="http://www.free4u.pl/data_godzina.php?co=data"></script>
+<!-- STOP free4u.pl -->
+<!-- START free4u.pl -->
+<script type="text/JavaScript" src="http://www.free4u.pl/data_godzina.php?co=godzina"></script>
+<!-- STOP free4u.pl -->
+<div>
+    <p>Twoje dane konta są poniżej:</p>
+    <table>
+        <tr>
+            <td>Nazwa użytkownika:</td>
+            <td>{{ account['username'] }}</td>
+        </tr>
+        <tr>
+            <td>Hasło:</td>
+            <td>{{ account['password'] }}</td>
+        </tr>
+        <tr>
+            <td>Email:</td>
+            <td>{{ account['email'] }}</td>
+        </tr>
+        <tr>
+            <td>Stworzone konto:</td>
+            <td>{{ account['konto_create'] }}</td>
+        </tr>
+        <tr>
+            <td>Odstatnie logowanie:</td>
+            <td>{{ account['login_as'] }}</td>
+        </tr>
+        <tr>
+            <td>Odstatnie zmiana hasła:</td>
+            <td>{{ account['haslo_change'] }}</td>
+        </tr>
+        <tr>
+            <td>Koszyk stan:</td>
+            <td>{{ account['money'] }} zł</td>
+        </tr>
+    </table>
+    <!--<a href="{{ url_for('admin') }}">Panel admina</a> -->
+    <a href="{{ url_for('pytania') }}">Pytania</a>
+
+</div>
+{% endblock %}

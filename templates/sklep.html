@@ -1,0 +1,27 @@
+{% extends 'layout.html' %}
+
+{% block title %}Sklep{% endblock %}
+{% block content %}
+<h2>Sklep</h2>
+<!-- START free4u.pl -->
+<script type="text/JavaScript" src="http://www.free4u.pl/data_godzina.php?co=data"></script>
+<!-- STOP free4u.pl -->
+<!-- START free4u.pl -->
+<script type="text/JavaScript" src="http://www.free4u.pl/data_godzina.php?co=godzina"></script>
+<!-- STOP free4u.pl -->
+<table border="1">
+    <tr>
+        <td>Nazwa produktu</td><td>Producent</td><td>Kategoria</td><td>Typ</td><td>Cena</td><td>Indenfikator</td>
+    </tr>
+    {% for sklep in sklepDetalis %}
+    <tr>
+        <td>{{sklep[1]}}</td><td>{{sklep[2]}}</td><td>{{sklep[3]}}</td><td>{{sklep[4]}}</td><td>{{sklep[5]}}</td><td>{{sklep[6]}}</td>
+    </tr>
+    {% endfor %}
+</table>
+<form action="/sklep_a" method="post" enctype="multipart/form-data">
+    <td><input type="text" name="indenfikator" placeholder="indenfikator" id="indenfikator" required></td>
+    <td><input type="text" name="ilosc" placeholder="ilosć" id="ilosc" required></td>
+    <td><input type="submit" /></td>
+</form>
+{% endblock %}
