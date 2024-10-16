@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+{% extends 'layout.html' %}
+
+{% block title %}Tabory{% endblock %}
+
+
+{% block content %}
+
+<head>
+  <style type="text/css">
+    .tg {
+      border-collapse: collapse;
+      border-spacing: 0;
+    }
+
+    .tg td {
+      border-color: black;
+      border-style: solid;
+      border-width: 1px;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      overflow: hidden;
+      padding: 10px 5px;
+      word-break: normal;
+    }
+
+    .tg th {
+      border-color: black;
+      border-style: solid;
+      border-width: 1px;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      font-weight: normal;
+      overflow: hidden;
+      padding: 10px 5px;
+      word-break: normal;
+    }
+
+    .tg .tg-0lax {
+      text-align: left;
+      vertical-align: top
+    }
+  </style>
+</head>
+
+<body>
+  <p>Informacje o danym pojedźie</p>
+  <br>
+  <form action="{{url_for('tabory')}}" method="post">
+    <input type="text" name="numer" placeholder="numer" id="numer" required>
+    <input type="submit" value="Wykonaj">
+    <br>
+    <form>
+      <br>
+      <table class="tg">
+        <thead>
+          <tr>
+            <th class="tg-3esp">Numer taborowy</th>
+            <th class="tg-aweg">{{test[0]}}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="tg-1zce">Operator/przewoźnik</td>
+            <td class="tg-aweg">{{test[1]}}</td>
+          </tr>
+          <tr>
+            <td class="tg-3esp">Rodzaj pojazdu</td>
+            <td class="tg-aweg">{{test[2]}}</td>
+          </tr>
+          <tr>
+            <td class="tg-1zce">Marka</td>
+            <td class="tg-aweg">{{test[3]}}</td>
+          </tr>
+          <tr>
+            <td class="tg-3esp">Model</td>
+            <td class="tg-aweg">{{test[4]}}</td>
+          </tr>
+          <tr>
+            <td class="tg-1zce">Rok produkcji</td>
+            <td class="tg-aweg">{{test[5]}}</td>
+          </tr>
+          <tr>
+            <td class="tg-3esp">Wysokość podłogi</td>
+            <td class="tg-aweg">{{test[6]}}</td>
+          </tr>
+          <tr>
+            <td class="tg-1zce">Typ pojazdu</td>
+            <td class="tg-aweg">{{test[7]}}</td>
+          </tr>
+          <tr>
+            <td class="tg-3esp">Pojazd dwukierunkowy:</td>
+            <td class="tg-aweg">{{test[8]}}</td>
+          </tr>
+          <tr>
+            <td class="tg-1zce">Pojazd historyczny:</td>
+            <td class="tg-aweg">{{test[9]}}</td>
+          </tr>
+          <tr>
+            <td class="tg-3esp">Długość:</td>
+            <td class="tg-aweg">{{test[10]}}</td>
+          </tr>
+          <tr>
+            <td class="tg-1zce">Liczba miejsc siedzących:</td>
+            <td class="tg-aweg">{{test[11]}}</td>
+          </tr>
+          <tr>
+            <td class="tg-3esp">Liczba miejsc stojących:</td>
+            <td class="tg-aweg">{{test[12]}}</td>
+          </tr>
+          <tr>
+            <td class="tg-1zce">Liczba miejsc na rowery:</td>
+            <td class="tg-aweg">{{test[13]}}</td>
+          </tr>
+          <tr>
+            <td class="tg-3esp">Klimatyzacja:</td>
+            <td class="tg-aweg">{{test[14]}}</td>
+          </tr>
+          <tr>
+            <td class="tg-1zce">Monitoring:</td>
+            <td class="tg-aweg">{{test[15]}}</td>
+          </tr>
+          <tr>
+            <td class="tg-3esp">Monitor wewnętrzny:</td>
+            <td class="tg-aweg">{{test[16]}}</td>
+          </tr>
+          <tr>
+            <td class="tg-1zce">Przyklęk:</td>
+            <td class="tg-aweg">{{test[17]}}</td>
+          </tr>
+          <tr>
+            <td class="tg-3esp">Rampa dla wózków:</td>
+            <td class="tg-aweg">{{test[18]}}</td>
+          </tr>
+          <tr>
+            <td class="tg-1zce">Drzwi pasażerskie:</td>
+            <td class="tg-aweg">{{test[19]}}</td>
+          </tr>
+          <tr>
+            <td class="tg-3esp">USB:</td>
+            <td class="tg-aweg">{{test[20]}}</td>
+          </tr>
+          <tr>
+            <td class="tg-1zce">Zapowiedzi głosowe:</td>
+            <td class="tg-vyg3">{{test[21]}}</td>
+          </tr>
+          <tr>
+            <td class="tg-3esp">AED:</td>
+            <td class="tg-aweg">{{test[22]}}</td>
+          </tr>
+          <tr>
+            <td class="tg-1zce">Biletomat:</td>
+            <td class="tg-vyg3">{{test[23]}}</td>
+          </tr>
+          <tr>
+            <td class="tg-3esp">Patron:</td>
+            <td class="tg-aweg">{{test[24]}}</td>
+          </tr>
+        </tbody>
+      </table>
+</body>
+
+</html>
+{%endblock %}

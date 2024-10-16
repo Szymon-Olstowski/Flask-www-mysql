@@ -1,0 +1,25 @@
+<html>
+
+</html>
+
+<body>
+    {% extends 'layout.html' %}
+    {% block title %}Odjazd z przystanków{% endblock %}
+
+    {% block content %}
+    <form action="{{url_for('odjazdy_przys')}}" method="post">
+        <input type="text" name="link" placeholder="link" id="link" required>
+        <input type="submit" value="Sprawdź">
+    </form>
+    <br>
+    <table>
+        {% for row in data %}
+        <tr>
+            {% for col in row %}
+            <td>{{ col }}</td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+{% endblock %}

@@ -1,28 +1,87 @@
 <!DOCTYPE html>
 <html>
-	<head>
-		<meta charset="utf-8">
-		<title>{% block title %}{% endblock %}</title>
-		<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-		<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.1/css/all.css">
-	</head>
-	<body class="loggedin">
-		<nav class="navtop">
-			<div>
-				<h1>Strona Sklepu</h1>
-                <a href="{{ url_for('home') }}"><i class="fas fa-home"></i>Dom</a>
-				<a href="{{ url_for('profile') }}"><i class="fas fa-user-circle"></i>Profil</a>
-				<a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i>Wyloguj się</a>
-				<a href="{{ url_for('haslo') }}"><i class="fas fa-key"></i>Zmiana hasła</a>
-				<a href="{{ url_for('sklep') }}"><i class="fas fa-shopping-cart"></i>Sklep</a>
-				<a href="{{ url_for('data') }}"><i class="fas fa-shopping-cart"></i>Sklep Dodawanie</a>
-				<a href="{{ url_for('koszyk') }}"><i class="fas fa-shopping-cart"></i>Koszyk</a>
 
-			</div>
-		</nav>
-		
-		<div class="content">
-			{% block content %}{% endblock %}
-		</div>
-	</body>
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}{% endblock %}</title>
+  <style>
+    /* Styl dla układu komputerowego */
+    @media (min-width: 768px) {
+      header {
+        width: 150px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        background-color: #4CAF50;
+        color: white;
+        padding: 10px;
+      }
+
+      .content {
+        padding: 20px;
+        margin-left: 150px;
+      }
+
+      header a {
+        font-size: 25px;
+        /* Ustawienie rozmiaru czcionki na 25px */
+      }
+    }
+
+    /* Styl dla układu mobilnego */
+    @media (max-width: 767px) {
+      header {
+        width: 100%;
+        position: relative;
+        padding: 10px;
+        text-align: center;
+        background-color: #4CAF50;
+        color: white;
+      }
+
+      header a {
+        display: inline-block;
+        margin: 0 10px;
+        font-size: 25px;
+        /* Ustawienie rozmiaru czcionki na 25px */
+      }
+
+      .content {
+        padding: 20px;
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+
+  <header>
+    <h1>Strona ZKM Gdańsk</h1>
+    <a href="{{ url_for('test') }}" class="nav-link">Główna</a>
+    <br>
+    <a href="{{ url_for('rozklad') }}" class="nav-link">Rozkład</a>
+    <br>
+    <a href="{{ url_for('tabory') }}" class="nav-link">Informacja o pojazdach</a>
+    <br>
+    <a href="{{ url_for('lok_autobusu') }}" class="nav-link">Lokalizacja pojazdu</a>
+    <br>
+    <a href="{{ url_for('przystanek') }}" class="nav-link">Przystanek</a>
+    <br>
+    <a href="{{ url_for('odjazdy') }}" class="nav-link">Aktualne odjazdy</a>
+    <br>
+    <a href="{{ url_for('lok_numer_autobusu') }}" class="nav-link">Lokalizacja pojazdu po nr pojazdu</a>
+    <br>
+    <a href="{{ url_for('bus_stops') }}" class="nav-link">Nazwy przystanków</a>
+    <br>
+    <a href="{{ url_for('odjazdy_przys') }}" class="nav-link">Odjazd z przystanków</a>
+  </header>
+  <div class="content">
+    {% block content %}{% endblock %}
+  </div>
+
+</body>
+
 </html>

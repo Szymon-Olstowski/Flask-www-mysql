@@ -1,0 +1,38 @@
+{% extends 'layout.html' %}
+
+{% block title %}Nazwy przystanków{% endblock %}
+
+{% block content %}
+<!DOCTYPE html>
+<html lang="pl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Przystanki autobusowe/tramwajowe</title>
+</head>
+
+<body>
+    Przystanki autobusowe/tramwajowe
+    <form method="POST">
+        <label for="line_number">Wpisz numer linii tramwajowej/autobusowej:</label>
+        <input type="text" id="line_number" name="line_number" required>
+        <input type="submit" value="Wyślij">
+    </form>
+    <br>
+    {% for bus_stop in bus_stops %}
+    <div style="display: inline-block; margin-right: 2px;">
+        {{ bus_stop.bus_stop }}
+    </div>
+    <div style="display: inline-block;">
+        <form action="/rozklad" method="post">
+            <input type="hidden" name="link" value="{{ bus_stop.link }}">
+            <button type="submit" class="stop-button">Rozkład</button>
+        </form>
+    </div>
+    <br>
+    {% endfor %}
+</body>
+
+</html>
+{% endblock %}

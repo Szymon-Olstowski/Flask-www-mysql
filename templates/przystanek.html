@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+{% extends 'layout.html' %}
+
+{% block title %}Przystanek{% endblock %}
+
+
+{% block content %}
+
+<head>
+    <style type="text/css">
+        .tg {
+            border-collapse: collapse;
+            border-spacing: 0;
+        }
+
+        .tg td {
+            border-color: black;
+            border-style: solid;
+            border-width: 1px;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            overflow: hidden;
+            padding: 10px 5px;
+            word-break: normal;
+        }
+
+        .tg th {
+            border-color: black;
+            border-style: solid;
+            border-width: 1px;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            font-weight: normal;
+            overflow: hidden;
+            padding: 10px 5px;
+            word-break: normal;
+        }
+
+        .tg .tg-0lax {
+            text-align: left;
+            vertical-align: top
+        }
+    </style>
+</head>
+
+<body>
+    <p>Lokalizacja przystanków</p>
+    <br>
+    <form action="{{url_for('przystanek')}}" method="post">
+        <input type="text" name="przystanek" placeholder="przystanek" id="przystanek" required>
+        <input type="submit" value="Sprawdź">
+    </form>
+    <br>
+    <table class="tg">
+        <tr>
+            <td class="tg-3esp">Nazwa przystanku</td>
+            <td class="tg-3esp">Numer przysatnku</td>
+            <td class="tg-3esp">Miasto</td>
+            <td class="tg-3esp">Ulica</td>
+            <td class="tg-3esp">Typ</td>
+
+        </tr>
+        {% for test in przys %}
+        <tr>
+            <td class="tg-aweg">{{test[0]}}</td>
+            <td class="tg-aweg">{{test[4]}}</td>
+            <td class="tg-aweg">{{test[1]}}</td>
+            <td class="tg-aweg">{{test[2]}}</td>
+            <td class="tg-aweg">{{test[3]}}</td>
+        </tr>
+
+        {% endfor %}
+    </table>
+</body>
+
+</html>
+{%endblock %}
